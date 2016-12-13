@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Ubuntu Mainline Kernel
+Comment=Checks for new kernel on Ubuntu Kernel PPA
+Encoding=UTF-8
+Version=0.1
+Exec=bash -c 'sleep 60;ubuntu-mainline-kernel.sh -c'
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+Terminal=false
+Hidden=false
