@@ -301,7 +301,7 @@ Optional:
 		installed_version=$(latest_local_version)
 		log ": $installed_version"
 
-		if [ "$latest_version" > "$installed_version" ]; then
+		if [[ "$latest_version" > "$installed_version" ]]; then
 			log "A newer kernel version ($latest_version) is available"
 			
 			[ -x $(which notify-send) ] && notify-send --icon=info -t 12000 \
