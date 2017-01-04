@@ -47,6 +47,7 @@ Optional:
   -ns, --no-signature  Do not check the gpg signature of the checksums file
   -nc, --no-checksum   Do not check the sha checksums of the .deb files
   -d, --debug          Show debug information, all internal command's echo their output
+  --rc                 Also include release candidates
   --yes                Assume yes on all questions (use with caution!)
 ```
 
@@ -94,6 +95,7 @@ Dependencies
 
 Optional dependencies
 ----------------
+* libnotify-bin (to show notify bubble when new version is found)
 * bsdmainutils (format output of -l, -r with column)
 * gpg (to check the signature of the checksum file)
 * sha1sum/sha256sum (to check the .deb checksums)
@@ -102,6 +104,5 @@ Optional dependencies
 TODO
 -----------------
 - [] Support daily kernel builds
-- [] Filter release canditates
 
 

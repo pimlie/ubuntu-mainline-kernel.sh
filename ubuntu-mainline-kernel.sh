@@ -16,6 +16,7 @@ cleanup_files=1
 do_install=1
 use_lowlatency=0
 use_lpae=0
+use_rc=0
 check_signature=1
 check_checksum=1
 assume_yes=0
@@ -117,6 +118,9 @@ while (( "$#" )); do
 			
 			use_lpae=1
 			;;
+		--rc)
+			use_rc=1
+			;;
 		--yes)
 			assume_yes=1
 			;;
@@ -210,9 +214,9 @@ load_local_versions() {
 		for pckg in `dpkg -l linux-image-* | cut -d " " -f 3 | sort`; do
 			# only match kernels from ppa
 			if [[ "$pckg" =~ linux-image-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{3,} ]]; then
-				version=$(echo $pckg | cut -d"-" -f 3,4)
+				version="v"$(echo $pckg | cut -d"-" -f 3,4)
 				
-				LOCAL_VERSIONS+=("v"$version)
+				LOCAL_VERSIONS+=($version)
 			fi
 		done
 		unset IFS
@@ -223,8 +227,12 @@ latest_local_version() {
 	load_local_versions 1
 	
 	local sorted
-	sorted=($(sort <<<"${LOCAL_VERSIONS[*]}"))
-	echo ${sorted[${#sorted[@]}-1]}
+	IFS=$'\n'
+	sorted=($(sort -t"." -k1V,3 <<<"${LOCAL_VERSIONS[*]}"))
+	unset IFS
+
+	lv=${sorted[${#sorted[@]}-1]}
+	echo ${lv/-[0-9][0-9][0-9][0-9][0-9][0-9]rc/-rc}
 }
 
 load_remote_versions () {
@@ -237,11 +245,12 @@ load_remote_versions () {
 		IFS=$'\n'
 		for line in $index; do
 			[[ "$line" =~ "folder" ]] || continue
-			[[ "$line" =~ v[0-9]+\.[0-9]+(\.[0-9]+)?\/ ]] || continue
+			[[ $use_rc -eq 0 ]] && [[ "$line" =~ -rc ]] && continue
+			[[ "$line" =~ v[0-9]+\.[0-9]+(\.[0-9]+)?(-rc[0-9]+)?\/ ]] || continue
 			
 			line=${line##*href=\"}
 			line=${line%%\/\">*}
-			[[ "$line" =~ v[0-9]+\.[0-9]+\.[0-9]+ ]] || { line=$line".0"; }
+			[[ ! "$line" =~ (v[0-9]+\.[0-9]+)\.[0-9]+ ]] && [[ "$line" =~ (v[0-9]+\.[0-9]+)(-rc[0-9]+)? ]] && line=${BASH_REMATCH[1]}".0"${BASH_REMATCH[2]};
 			
 			REMOTE_VERSIONS+=($line)
 		done
@@ -251,9 +260,12 @@ load_remote_versions () {
 
 latest_remote_version () {
 	load_remote_versions 1
-
 	local sorted
-	sorted=($(sort <<<"${REMOTE_VERSIONS[*]}"))
+
+	IFS=$'\n'
+	sorted=($(sort -t\. -k1V,3  <<<"${REMOTE_VERSIONS[*]}"))
+	unset IFS
+	
 	echo ${sorted[${#sorted[@]}-1]}
 }
 
@@ -287,6 +299,7 @@ Optional:
   -ns, --no-signature  Do not check the gpg signature of the checksums file
   -nc, --no-checksum   Do not check the sha checksums of the .deb files
   -d, --debug          Show debug information, all internal command's echo their output
+  --rc                 Also include release candidates
   --yes                Assume yes on all questions (use with caution!)
 "
 		exit 2
@@ -301,7 +314,7 @@ Optional:
 		installed_version=$(latest_local_version)
 		log ": $installed_version"
 
-		if [[ "$latest_version" > "$installed_version" ]]; then
+		if [ "$installed_version" != "$latest_version" ] && [ "$installed_version" = "$(echo -e "$latest_version\n$installed_version" | sort -V | head -n1)" ]; then
 			log "A newer kernel version ($latest_version) is available"
 			
 			[ -x $(which notify-send) ] && notify-send --icon=info -t 12000 \
@@ -401,10 +414,14 @@ Optional:
 		fi
 
 		IFS=$'\n'
-		index=$(download $ppa_host $ppa_index${version%\.0}"/")
+
+		ppa_uri=$ppa_index${version%\.0}"/"
+		ppa_uri=${ppa_uri/\.0-rc/-rc}
+
+		index=$(download $ppa_host $ppa_uri)
 		index=${index##*<table}
 		for line in $index; do
-			[[ "$line" =~ linux-(image|headers)-[0-9]\.[0-9]\.[0-9]-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
+			[[ "$line" =~ linux-(image|headers)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
 			
 			[ $use_lowlatency -eq 0 ] && [[ "$line" =~ "-lowlatency" ]] && continue
 			[ $use_lowlatency -eq 1 ] && [[ ! "$line" =~ "-lowlatency" ]] && continue
@@ -422,7 +439,7 @@ Optional:
 		log "Will download ${#FILES[@]} files from $ppa_host:"
 		for file in "${FILES[@]}"; do
 			logn "$file"
-			download $ppa_host $ppa_index${version%\.0}"/"$file > $workdir$file
+			download $ppa_host $ppa_uri$file > $workdir$file
 			logn " "
 			
 			remove_http_headers $workdir$file
@@ -537,10 +554,10 @@ Optional:
 			pckgs=()
 			for pckg in $(dpkg -l linux-{image,headers}-${uninstall_version#v}-* 2>$debug_target | cut -d " " -f 3); do
 				# only match kernels from ppa, they have 3+ characters as second version string
-				if [[ "$pckg" =~ linux-headers-[0-9]\.[0-9]\.[0-9]-[0-9]{6} ]]; then
+				if [[ "$pckg" =~ linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
 					pckgs+=($pckg":$ARCH")
 					pckgs+=($pckg":all")
-				elif [[ "$pckg" =~ linux-image-[0-9]\.[0-9]\.[0-9]-[0-9]{6} ]]; then
+				elif [[ "$pckg" =~ linux-image-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
 					pckgs+=($pckg":$ARCH")
 				fi
 			done	
