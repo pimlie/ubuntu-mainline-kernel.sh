@@ -36,6 +36,8 @@ debug_target="/dev/null"
 workdir="/tmp/"$(basename $0)"/";
 sudo=$(which sudo)
 ARCH=$(dpkg --print-architecture)
+monitor_pid=0
+download_size=0
 
 # helper functions
 single_action () {
@@ -192,6 +194,36 @@ download () {
     exec 3<>/dev/tcp/${host}/80
     echo -e "GET "$uri" HTTP/1.0\r\nHost: "$host"\r\nConnection: close\r\n\r\n" >&3
     cat <&3
+}
+
+monitor_progress () {
+    local msg=$1
+    local file=$2
+
+    download_size=-1
+    printf "$msg: "
+    (while :; do for c in / - \\ \|; do
+        [[ -f "$file" ]] && {
+            [[ $download_size -le 0 ]] && {
+                download_size=$(($(head -n20 "$file" | grep -aoi -E "Content-Length: [0-9]+" | cut -d" " -f2) + 0));
+                printf ' %d%% %s' 0 "$c";
+                printf '\b%.0s' {1..5}
+            } || {
+                filesize=$(( $(du -b $file | cut -f1) + 0))
+                progress="$((200*$filesize/$download_size % 2 + 100*$filesize/$download_size))"
+
+                printf ' %s%% %s' "$progress" "$c";
+                length=$((4 + ${#progress}))
+                printf '\b%.0s' $(seq 1 $length)
+            };
+        }
+        sleep 1;
+    done; done) &
+    monitor_pid=$!
+}
+
+end_monitor_progress () {
+    { kill $monitor_pid && wait $monitor_pid; printf '100%%   \n'; } 2>/dev/null
 }
 
 remove_http_headers () {
@@ -446,12 +478,11 @@ Optional:
         debs=()
         log "Will download ${#FILES[@]} files from $ppa_host:"
         for file in "${FILES[@]}"; do
-            logn "$file"
-            download $ppa_host $ppa_uri$file > $workdir$file
-            logn " "
+            monitor_progress "Downloading $file" "$workdir$file"
+            download $ppa_host $ppa_uri$file > "$workdir$file"
             
             remove_http_headers $workdir$file
-            log
+            end_monitor_progress
             
             if [[ "$file" =~ ".deb" ]]; then
                 debs+=($file)
