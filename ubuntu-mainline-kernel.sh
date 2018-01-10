@@ -253,7 +253,7 @@ load_local_versions() {
         IFS=$'\n'
         for pckg in `dpkg -l linux-image-* | cut -d " " -f 3 | sort`; do
             # only match kernels from ppa
-            if [[ "$pckg" =~ linux-image-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{3,} ]]; then
+            if [[ "$pckg" =~ linux-image-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
                 version="v"$(echo $pckg | cut -d"-" -f 3,4)
                 
                 LOCAL_VERSIONS+=($version)
