@@ -265,14 +265,18 @@ load_local_versions() {
 
 latest_local_version() {
     load_local_versions 1
-    
-    local sorted
-    IFS=$'\n'
-    sorted=($(sort -t"." -k1V,3 <<<"${LOCAL_VERSIONS[*]}"))
-    unset IFS
 
-    lv=${sorted[${#sorted[@]}-1]}
-    echo ${lv/-[0-9][0-9][0-9][0-9][0-9][0-9]rc/-rc}
+    if [ ${#LOCAL_VERSIONS[@]} -gt 0 ]; then
+        local sorted
+        IFS=$'\n'
+        sorted=($(sort -t"." -k1V,3 <<<"${LOCAL_VERSIONS[*]}"))
+        unset IFS
+
+        lv=${sorted[${#sorted[@]}-1]}
+        echo ${lv/-[0-9][0-9][0-9][0-9][0-9][0-9]rc/-rc}
+    else
+        echo "none"
+    fi
 }
 
 load_remote_versions () {
@@ -555,8 +559,11 @@ Optional:
         ;;
     uninstall)
         load_local_versions
-        
-        if [ -z "${action_data[0]}" ]; then
+
+        if [ ${#LOCAL_VERSIONS[@]} -eq 0 ]; then
+            echo "No installed mainline kernels found"
+            exit 1
+        elif [ -z "${action_data[0]}" ]; then
             echo "Which kernel version do you wish to uninstall?"
             #echo "(only first 10 installed versions are listed)"
             nr=0
