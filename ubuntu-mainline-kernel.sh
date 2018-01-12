@@ -361,7 +361,7 @@ Optional:
         if [ "$installed_version" != "$latest_version" ] && [ "$installed_version" = "$(echo -e "$latest_version\n$installed_version" | sort -V | head -n1)" ]; then
             log "A newer kernel version ($latest_version) is available"
             
-            [ -x $(which notify-send) ] && notify-send --icon=info -t 12000 \
+            [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                 "Kernel $latest_version available" \
                 "A newer kernel version ($latest_version) is\navailable on $ppa_host$ppa_uri\n\nRun '"$(basename $0)" -i' to update"
             exit 1
