@@ -598,7 +598,7 @@ Optional:
             IFS=$'\n'
             
             pckgs=()
-            for pckg in $(dpkg -l linux-{image,headers}-${uninstall_version#v}-* 2>$debug_target | cut -d " " -f 3); do
+            for pckg in $(dpkg -l linux-{image,headers}-${uninstall_version#v}* 2>$debug_target | cut -d " " -f 3); do
                 # only match kernels from ppa, they have 3+ characters as second version string
                 if [[ "$pckg" =~ linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
                     pckgs+=($pckg":$ARCH")
