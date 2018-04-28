@@ -471,7 +471,7 @@ Optional:
         index=$(download $ppa_host $ppa_uri)
         index=${index##*<table}
         for line in $index; do
-            [[ "$line" =~ linux-(image-(un)?signed|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
+            [[ "$line" =~ linux-(image(-(un)?signed)?|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
             
             [ $use_lowlatency -eq 0 ] && [[ "$line" =~ "-lowlatency" ]] && continue
             [ $use_lowlatency -eq 1 ] && [[ ! "$line" =~ "-lowlatency" ]] && continue
@@ -604,12 +604,12 @@ Optional:
             IFS=$'\n'
             
             pckgs=()
-            for pckg in $(dpkg -l linux-{image-[un]?signed,headers,modules}-${uninstall_version#v}* 2>$debug_target | cut -d " " -f 3); do
+            for pckg in $(dpkg -l linux-{image,image-[un]?signed,headers,modules}-${uninstall_version#v}* 2>$debug_target | cut -d " " -f 3); do
                 # only match kernels from ppa, they have 6 characters as second version string
                 if [[ "$pckg" =~ linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
                     pckgs+=($pckg":$ARCH")
                     pckgs+=($pckg":all")
-                elif [[ "$pckg" =~ linux-(image-(un)?signed|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
+                elif [[ "$pckg" =~ linux-(image(-(un)?signed)?|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
                     pckgs+=($pckg":$ARCH")
                 fi
             done    
