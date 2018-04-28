@@ -25,6 +25,7 @@ do_install=1
 use_lowlatency=0
 use_lpae=0
 use_rc=0
+signed_only=0
 check_signature=1
 check_checksum=1
 assume_yes=0
@@ -130,6 +131,10 @@ while (( "$#" )); do
             ;;
         --rc)
             use_rc=1
+            ;;
+        -s|--signed)
+            signed_only=1
+            log "The option '--signed' is not yet implemented"
             ;;
         --yes)
             assume_yes=1
@@ -334,6 +339,7 @@ Arguments:
   -h               Show this message
 
 Optional:
+  -s, --signed         Only install signed kernel packages (not implemented)
   -p, --path DIR       The working directory, .deb files will be downloaded into 
                        this folder. If omitted, the folder /tmp/"$(basename $0)"/ 
                        is used. Path is relative from \$PWD
@@ -465,7 +471,7 @@ Optional:
         index=$(download $ppa_host $ppa_uri)
         index=${index##*<table}
         for line in $index; do
-            [[ "$line" =~ linux-(image|headers)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
+            [[ "$line" =~ linux-(image-(un)?signed|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
             
             [ $use_lowlatency -eq 0 ] && [[ "$line" =~ "-lowlatency" ]] && continue
             [ $use_lowlatency -eq 1 ] && [[ ! "$line" =~ "-lowlatency" ]] && continue
@@ -598,12 +604,12 @@ Optional:
             IFS=$'\n'
             
             pckgs=()
-            for pckg in $(dpkg -l linux-{image,headers}-${uninstall_version#v}* 2>$debug_target | cut -d " " -f 3); do
-                # only match kernels from ppa, they have 3+ characters as second version string
+            for pckg in $(dpkg -l linux-{image-[un]?signed,headers,modules}-${uninstall_version#v}* 2>$debug_target | cut -d " " -f 3); do
+                # only match kernels from ppa, they have 6 characters as second version string
                 if [[ "$pckg" =~ linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
                     pckgs+=($pckg":$ARCH")
                     pckgs+=($pckg":all")
-                elif [[ "$pckg" =~ linux-image-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
+                elif [[ "$pckg" =~ linux-(image-(un)?signed|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
                     pckgs+=($pckg":$ARCH")
                 fi
             done    
