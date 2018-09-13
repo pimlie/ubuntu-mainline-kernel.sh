@@ -17,6 +17,12 @@ wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/U
 mv UbuntuMainlineKernel.desktop ~/.config/autostart/
 ```
 
+Warning
+-----------------
+Use this script at your own risk. You could remove all kernels with this script and leave your system unbootable. 
+There are no safeguards that at least one kernel is installed on your system. Be especially careful with the `--yes` option.
+
+
 Usage
 -----------------
 ```

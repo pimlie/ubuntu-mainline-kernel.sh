@@ -621,7 +621,7 @@ Optional:
                 echo ${pckgs[@]}
                 
                 if [ $assume_yes -eq 0 ]; then
-                    echo -n "Are you really sure? (y/N)"
+                    echo -n "Are you really sure? Do you still have another kernel installed? (y/N)"
                     
                     read -sn1 continue
                     echo ""
@@ -630,7 +630,7 @@ Optional:
                 fi
                 
                 if [ "$continue" == "y" ] || [ "$continue" == "Y" ]; then
-                    $sudo dpkg --purge ${pckgs[@]} 2>$debug_target >&2
+                    $sudo DEBIAN_FRONTEND=noninteractive dpkg --purge ${pckgs[@]} 2>$debug_target >&2
                     
                     if [ $? -eq 0 ]; then
                         log "Kernel $uninstall_version succesfully purged"
