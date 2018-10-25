@@ -474,9 +474,9 @@ Optional:
             [[ "$line" =~ linux-(image(-(un)?signed)?|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
             
             [ $use_lowlatency -eq 0 ] && [[ "$line" =~ "-lowlatency" ]] && continue
-            [ $use_lowlatency -eq 1 ] && [[ ! "$line" =~ "-lowlatency" ]] && continue
+            [ $use_lowlatency -eq 1 ] && [[ ! "$line" =~ "-lowlatency" ]] && [[ ! "$line" =~ "_all" ]] && continue
             [ $use_lpae -eq 0 ] && [[ "$line" =~ "-lpae" ]] && continue
-            [ $use_lpae -eq 1 ] && [[ ! "$line" =~ "-lpae" ]] && continue
+            [ $use_lpae -eq 1 ] && [[ ! "$line" =~ "-lpae" ]] && [[ ! "$line" =~ "_all" ]] && continue
             
             line=${line##*href=\"}
             line=${line%%\">*}
