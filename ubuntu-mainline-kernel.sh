@@ -1,11 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 
 [ -f "/etc/os-release" ] && {
     source /etc/os-release
-    [[ "$ID" != "ubuntu" ]] && [[ ! "$ID_LIKE" =~ "ubuntu" ]] && {
-        echo "Abort, this script is only intended for Ubuntu-like distro's"
-        exit 2
-    }
+    [[ "$ID" == "ubuntu" ]] || [[ "$ID_LIKE" =~ "ubuntu" ]]
 } || {
     OS=$(lsb_release -si 2>&-)
     [[ "$OS" == "Ubuntu" ]] || [[ "$OS" == "LinuxMint" ]]  || [[ "$OS" == "neon" ]] || { 
@@ -25,7 +23,7 @@ do_install=1
 use_lowlatency=0
 use_lpae=0
 use_rc=0
-signed_only=0
+# signed_only=0
 check_signature=1
 check_checksum=1
 assume_yes=0
@@ -34,8 +32,8 @@ REMOTE_VERSIONS=()
 run_action="help"
 action_data=()
 debug_target="/dev/null"
-workdir="/tmp/"$(basename $0)"/";
-sudo=$(which sudo)
+workdir="/tmp/$(basename "$0")/"
+sudo=$(command -v sudo)
 ARCH=$(dpkg --print-architecture)
 monitor_pid=0
 download_size=0
@@ -133,7 +131,7 @@ while (( "$#" )); do
             use_rc=1
             ;;
         -s|--signed)
-            signed_only=1
+            # signed_only=1
             log "The option '--signed' is not yet implemented"
             ;;
         --yes)
@@ -165,22 +163,20 @@ while (( "$#" )); do
             ;;
     esac
     
-    [ $argarg_required -eq 1 ] && {
-        [ -n "$2" ] && [ "${2##-}" == "$2" ] && { 
-            action_data+=($2)
+    if [ $argarg_required -eq 1 ]; then
+        [ -n "$2" ] && [ "${2##-}" == "$2" ] && {
+            action_data+=("$2")
             shift
         }
-    } || {
-        [ $argarg_required -eq 2 ] && {
-            [ -n "$2" ] && [ "${2##-}" == "$2" ] && { 
-                action_data+=($2)
-                shift
-            } || {
-                err "Option $1 requires an argument"
-                exit 2
-            }
+    elif [ $argarg_required -eq 2 ]; then
+        [ -n "$2" ] && [ "${2##-}" == "$2" ] && { 
+            action_data+=("$2")
+            shift
+        } || {
+            err "Option $1 requires an argument"
+            exit 2
         }
-    }
+    fi
     
     shift
 done
@@ -195,9 +191,9 @@ containsElement () {
 download () {
     host=$1
     uri=$2
-    
-    exec 3<>/dev/tcp/${host}/80
-    echo -e "GET "$uri" HTTP/1.0\r\nHost: "$host"\r\nConnection: close\r\n\r\n" >&3
+
+    exec 3<>/dev/tcp/"$host"/80
+    echo -e "GET $uri HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
     cat <&3
 }
 
@@ -206,23 +202,23 @@ monitor_progress () {
     local file=$2
 
     download_size=-1
-    printf "$msg: "
+    printf "%s: " "$msg"
     (while :; do for c in / - \\ \|; do
         [[ -f "$file" ]] && {
             [[ $download_size -le 0 ]] && {
-                download_size=$(($(head -n20 "$file" | grep -aoi -E "Content-Length: [0-9]+" | cut -d" " -f2) + 0));
-                printf ' %d%% %s' 0 "$c";
+                download_size=$(($(head -n20 "$file" | grep -aoi -E "Content-Length: [0-9]+" | cut -d" " -f2) + 0))
+                printf ' %d%% %s' 0 "$c"
                 printf '\b%.0s' {1..5}
             } || {
-                filesize=$(( $(du -b $file | cut -f1) + 0))
-                progress="$((200*$filesize/$download_size % 2 + 100*$filesize/$download_size))"
+                filesize=$(( $(du -b "$file" | cut -f1) + 0))
+                progress="$((200*filesize/download_size % 2 + 100*filesize/download_size))"
 
-                printf ' %s%% %s' "$progress" "$c";
+                printf ' %s%% %s' "$progress" "$c"
                 length=$((4 + ${#progress}))
                 printf '\b%.0s' $(seq 1 $length)
-            };
+            }
         }
-        sleep 1;
+        sleep 1
     done; done) &
     monitor_pid=$!
 }
@@ -233,13 +229,12 @@ end_monitor_progress () {
 
 remove_http_headers () {
     file="$1"
-    
     nr=0
     while(true); do
-        nr=$(($nr + 1))
+        nr=$((nr + 1))
         line=$(head -n$nr "$file" | tail -n 1)
-        
-        if [ -z $(echo "$line" | tr -cd '\r\n') ]; then
+
+        if [ -z "$(echo "$line" | tr -cd '\r\n')" ]; then
             tail -n +$nr "$file" > "${file}.tmp"
             mv "${file}.tmp" "${file}"
             break
@@ -256,12 +251,12 @@ load_local_versions() {
     local version
     if [ ${#LOCAL_VERSIONS[@]} -eq 0 ]; then
         IFS=$'\n'
-        for pckg in `dpkg -l linux-image-* | cut -d " " -f 3 | sort`; do
+        for pckg in $(dpkg -l linux-image-* | cut -d " " -f 3 | sort); do
             # only match kernels from ppa
             if [[ "$pckg" =~ linux-image-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
-                version="v"$(echo $pckg | cut -d"-" -f 3,4)
-                
-                LOCAL_VERSIONS+=($version)
+                version="v"$(echo "$pckg" | cut -d"-" -f 3,4)
+
+                LOCAL_VERSIONS+=("$version")
             fi
         done
         unset IFS
@@ -277,8 +272,8 @@ latest_local_version() {
         sorted=($(sort -t"." -k1V,3 <<<"${LOCAL_VERSIONS[*]}"))
         unset IFS
 
-        lv=${sorted[${#sorted[@]}-1]}
-        echo ${lv/-[0-9][0-9][0-9][0-9][0-9][0-9]rc/-rc}
+        lv="${sorted[${#sorted[@]}-1]}"
+        echo "${lv/-[0-9][0-9][0-9][0-9][0-9][0-9]rc/-rc}"
     else
         echo "none"
     fi
@@ -295,13 +290,13 @@ load_remote_versions () {
         for line in $index; do
             [[ "$line" =~ "folder" ]] || continue
             [[ $use_rc -eq 0 ]] && [[ "$line" =~ -rc ]] && continue
-            [[ "$line" =~ v[0-9]+\.[0-9]+(\.[0-9]+)?(-rc[0-9]+)?\/ ]] || continue
+            [[ "$line" =~ v[0-9]+\.[0-9]+(\.[0-9]+)?(-rc[0-9]+)?/ ]] || continue
             
             line=${line##*href=\"}
             line=${line%%\/\">*}
-            [[ ! "$line" =~ (v[0-9]+\.[0-9]+)\.[0-9]+ ]] && [[ "$line" =~ (v[0-9]+\.[0-9]+)(-rc[0-9]+)? ]] && line=${BASH_REMATCH[1]}".0"${BASH_REMATCH[2]};
-            
-            REMOTE_VERSIONS+=($line)
+            [[ ! "$line" =~ (v[0-9]+\.[0-9]+)\.[0-9]+ ]] && [[ "$line" =~ (v[0-9]+\.[0-9]+)(-rc[0-9]+)? ]] && line=${BASH_REMATCH[1]}".0"${BASH_REMATCH[2]}
+
+            REMOTE_VERSIONS+=("$line")
         done
         unset IFS
     fi
@@ -311,11 +306,9 @@ latest_remote_version () {
     load_remote_versions 1
     local sorted
 
-    IFS=$'\n'
-    sorted=($(sort -t\. -k1V,3  <<<"${REMOTE_VERSIONS[*]}"))
-    unset IFS
-    
-    echo ${sorted[${#sorted[@]}-1]}
+    sorted=($(sort -t"." -k1V,3 <<<"${REMOTE_VERSIONS[*]}" | tr '\n' ' '))
+
+    echo "${sorted[${#sorted[@]}-1]}"
 }
 
 # execute requested action
@@ -341,7 +334,7 @@ Arguments:
 Optional:
   -s, --signed         Only install signed kernel packages (not implemented)
   -p, --path DIR       The working directory, .deb files will be downloaded into 
-                       this folder. If omitted, the folder /tmp/"$(basename $0)"/ 
+                       this folder. If omitted, the folder /tmp/$(basename "$0")/
                        is used. Path is relative from \$PWD
   -ll, --low-latency   Use the low-latency version of the kernel, only for amd64 & i386
   -lpae, --lpae        Use the Large Physical Address Extension kernel, only for armhf
@@ -357,7 +350,7 @@ Optional:
 
     check)
         logn "Finding latest version available on $ppa_host"
-        latest_version=$(latest_remote_version);
+        latest_version=$(latest_remote_version)
         log ": $latest_version"
         
         logn "Finding latest installed version"
@@ -369,29 +362,29 @@ Optional:
             
             [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                 "Kernel $latest_version available" \
-                "A newer kernel version ($latest_version) is\navailable on $ppa_host$ppa_uri\n\nRun '"$(basename $0)" -i' to update"
+                "A newer kernel version ($latest_version) is\navailable on $ppa_host$ppa_uri\n\nRun '$(basename "$0") -i' to update"
             exit 1
         fi
         ;;
     local-list)
         load_local_versions
         
-        [[ -n "$(which column)" ]] && { column="column -x"; } || { column="cat"; }
+        [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
         
         (for version in "${LOCAL_VERSIONS[@]}"; do
             if [ -z "${action_data[0]}" ] || [[ "$version" =~ ${action_data[0]} ]]; then
-                echo $version
+                echo "$version"
             fi
         done) | $column
         ;;
     remote-list)
         load_remote_versions
         
-        [[ -n "$(which column)" ]] && { column="column -x"; } || { column="cat"; }
+        [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
         
         (for version in "${REMOTE_VERSIONS[@]}"; do
             if [ -z "${action_data[0]}" ] || [[ "$version" =~ ${action_data[0]} ]]; then
-                echo $version
+                echo "$version"
             fi
         done) | $column
         ;;
@@ -404,14 +397,14 @@ Optional:
             log
             
             if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
-                logn "Latest version is "$version" but seems its already installed"
+                logn "Latest version is $version but seems its already installed"
             else
-                logn "Latest version is: "$version
+                logn "Latest version is: $version"
             fi
                 
             if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
                 logn ", continue? (y/N) "
-                [ $quite -eq 0 ] && read -sn1 continue
+                [ $quite -eq 0 ] && read -rsn1 continue
                 log
                 
                 [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
@@ -434,7 +427,7 @@ Optional:
             
             if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
                 logn "It seems version $version is already installed, continue? (y/N) "
-                [ $quite -eq 0 ] && read -sn1 continue
+                [ $quite -eq 0 ] && read -rsn1 continue
                 log
                 
                 [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
@@ -449,9 +442,9 @@ Optional:
             exit 1
         }
         
-        cd $workdir
+        cd "$workdir" || exit 1
         
-        [ $check_signature -eq 1 ] && [ -z "$(which gpg)" ] && {
+        [ $check_signature -eq 1 ] && [ -z "$(command -v gpg)" ] && {
             check_signature=0
             
             warn "Disable signature check, gpg not available"
@@ -468,7 +461,7 @@ Optional:
         ppa_uri=$ppa_index${version%\.0}"/"
         ppa_uri=${ppa_uri/\.0-rc/-rc}
 
-        index=$(download $ppa_host $ppa_uri)
+        index=$(download $ppa_host "$ppa_uri")
         index=${index##*<table}
         for line in $index; do
             [[ "$line" =~ linux-(image(-(un)?signed)?|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
@@ -481,7 +474,7 @@ Optional:
             line=${line##*href=\"}
             line=${line%%\">*}
             
-            FILES+=($line)
+            FILES+=("$line")
         done
         unset IFS
 
@@ -489,38 +482,35 @@ Optional:
         log "Will download ${#FILES[@]} files from $ppa_host:"
         for file in "${FILES[@]}"; do
             monitor_progress "Downloading $file" "$workdir$file"
-            download $ppa_host $ppa_uri$file > "$workdir$file"
+            download $ppa_host "$ppa_uri$file" > "$workdir$file"
             
-            remove_http_headers $workdir$file
+            remove_http_headers "$workdir$file"
             end_monitor_progress
             
-            if [[ "$file" =~ ".deb" ]]; then
-                debs+=($file)
+            if [[ "$file" =~ \.deb ]]; then
+                debs+=("$file")
             fi
         done
 
         if [ $check_signature -eq 1 ]; then
-            gpg --list-keys ${ppa_key} >$debug_target 2>&1
-            
-            if [ $? -ne 0 ]; then
+            if ! gpg --list-keys ${ppa_key} >$debug_target 2>&1; then
                 logn "Importing kernel-ppa gpg key "
-                gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv ${ppa_key} >$debug_target 2>&1
                 
-                [ $? -gt 0 ] && { 
+                if gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv ${ppa_key} >$debug_target 2>&1; then
+                    log "ok"
+                else
                     logn "failed"
                     warn "Unable to check signature"
                     check_signature=0
-                } || log "ok"
+                fi
             fi
 
             if [ $check_signature -eq 1 ]; then
-                gpg --verify CHECKSUMS.gpg CHECKSUMS >$debug_target 2>&1
-                
-                if [ $? -gt 0 ]; then
+                if gpg --verify CHECKSUMS.gpg CHECKSUMS >$debug_target 2>&1; then
+                    log "Signature of checksum file has been succesfully verified"
+                else
                     err "Abort, signature of checksum file is NOT OK"
                     exit 4
-                else
-                    log "Signature of checksum file has been succesfully verified"
                 fi
             fi
         fi
@@ -529,26 +519,26 @@ Optional:
             shasums=( "sha256sum" "sha1sum" )
             
             for shasum in "${shasums[@]}"; do
-                xshasum=$(which $shasum)
+                xshasum=$(command -v "$shasum")
                 if [ -n "$xshasum" ] && [ -x "$xshasum" ]; then
-                    shasum_result=$($xshasum --ignore-missing -c CHECKSUMS  2>$debug_target | tee $debug_target | wc -l)
-                    
-                    if [ $? -gt 0 ] || [ $shasum_result -ne ${#debs[@]} ]; then
-                        err "Abort, $shasum retuned an error"
+                    shasum_result=$($xshasum --ignore-missing -c CHECKSUMS 2>>$debug_target | tee -a $debug_target | wc -l)
+
+                    if [ "$shasum_result" -eq 0 ] || [ "$shasum_result" -ne ${#debs[@]} ]; then
+                        err "Abort, $shasum retuned an error $shasum_result"
                         exit 4
                     else
                         log "Checksums of deb files have been succesfully verified with $shasum"
                     fi
-                    
-                    break;
+
+                    break
                 fi
             done
         fi
 
         if [ $do_install -eq 1 ]; then
             if [ ${#debs[@]} -gt 0 ]; then
-                log "Installing "${#debs[@]}" packages"
-                $sudo dpkg -i ${debs[@]} 2>&1 >$debug_target
+                log "Installing ${#debs[@]} packages"
+                $sudo dpkg -i "${debs[@]}" >$debug_target 2>&1
             else
                 warn "Did not find any .deb files to install"
             fi
@@ -571,17 +561,16 @@ Optional:
             exit 1
         elif [ -z "${action_data[0]}" ]; then
             echo "Which kernel version do you wish to uninstall?"
-            #echo "(only first 10 installed versions are listed)"
             nr=0
             for version in "${LOCAL_VERSIONS[@]}"; do
                 echo "[$nr]: $version"
                 nr=$((nr + 1))
                 
-                [ $nr -gt 9 ] && break;
+                [ $nr -gt 9 ] && break
             done
             
             echo -n "type the number between []: "
-            read -n1 index
+            read -rn1 index
             echo ""
             
             uninstall_version=${LOCAL_VERSIONS[$index]}
@@ -594,7 +583,7 @@ Optional:
 
         if [ $assume_yes -eq 0 ]; then
             echo -n "Are you sure you wish to remove kernel version $uninstall_version? (y/N)"
-            read -sn1 continue
+            read -rsn1 continue
             echo ""
         else
             continue="y"
@@ -604,13 +593,13 @@ Optional:
             IFS=$'\n'
             
             pckgs=()
-            for pckg in $(dpkg -l linux-{image,image-[un]?signed,headers,modules}-${uninstall_version#v}* 2>$debug_target | cut -d " " -f 3); do
+            for pckg in $(dpkg -l linux-{image,image-[un]?signed,headers,modules}-"${uninstall_version#v}"* 2>$debug_target | cut -d " " -f 3); do
                 # only match kernels from ppa, they have 6 characters as second version string
                 if [[ "$pckg" =~ linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
-                    pckgs+=($pckg":$ARCH")
-                    pckgs+=($pckg":all")
+                    pckgs+=("$pckg:$ARCH")
+                    pckgs+=("$pckg:all")
                 elif [[ "$pckg" =~ linux-(image(-(un)?signed)?|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
-                    pckgs+=($pckg":$ARCH")
+                    pckgs+=("$pckg:$ARCH")
                 fi
             done    
             
@@ -618,21 +607,19 @@ Optional:
                 warn "Did not find any packages to remove"
             else
                 echo "The following packages will be removed: "
-                echo ${pckgs[@]}
+                echo "${pckgs[@]}"
                 
                 if [ $assume_yes -eq 0 ]; then
                     echo -n "Are you really sure? Do you still have another kernel installed? (y/N)"
                     
-                    read -sn1 continue
+                    read -rsn1 continue
                     echo ""
                 else
                     continue="y"
                 fi
                 
                 if [ "$continue" == "y" ] || [ "$continue" == "Y" ]; then
-                    $sudo DEBIAN_FRONTEND=noninteractive dpkg --purge ${pckgs[@]} 2>$debug_target >&2
-                    
-                    if [ $? -eq 0 ]; then
+                    if $sudo DEBIAN_FRONTEND=noninteractive dpkg --purge "${pckgs[@]}" 2>$debug_target >&2; then
                         log "Kernel $uninstall_version succesfully purged"
                         exit 0
                     fi
