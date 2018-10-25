@@ -109,6 +109,6 @@ Optional dependencies
 
 TODO
 -----------------
-- [] Support daily kernel builds
+- [ ] Support daily kernel builds (on hold untill there is significant demand for this, PRs are also welcome)
 
 
