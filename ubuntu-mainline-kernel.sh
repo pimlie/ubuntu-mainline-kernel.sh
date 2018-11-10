@@ -306,8 +306,7 @@ latest_remote_version () {
     load_remote_versions 1
     local sorted
 
-    sorted=($(sort -t"." -k1V,3 <<<"${REMOTE_VERSIONS[*]}" | tr '\n' ' '))
-
+    sorted=($(echo ${REMOTE_VERSIONS[*]} | tr ' ' '\n' | sort -V | tr '\n' ' '))
     echo "${sorted[${#sorted[@]}-1]}"
 }
 
