@@ -195,7 +195,7 @@ download () {
     uri=$2
 
     if [ $use_https -eq 1 ]; then
-        $wget -q --save-headers --output-document - https://$host$uri
+        $wget -q --save-headers --output-document - "https://$host$uri"
     else
         exec 3<>/dev/tcp/"$host"/80
         echo -e "GET $uri HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
