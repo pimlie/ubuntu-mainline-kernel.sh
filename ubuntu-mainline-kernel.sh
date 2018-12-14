@@ -17,6 +17,7 @@ ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
 ppa_key="17C622B0"
 
+use_https=1
 quite=0
 cleanup_files=1
 do_install=1
@@ -34,6 +35,7 @@ action_data=()
 debug_target="/dev/null"
 workdir="/tmp/$(basename "$0")/"
 sudo=$(command -v sudo)
+wget=$(command -v wget)
 ARCH=$(dpkg --print-architecture)
 monitor_pid=0
 download_size=0
@@ -192,9 +194,13 @@ download () {
     host=$1
     uri=$2
 
-    exec 3<>/dev/tcp/"$host"/80
-    echo -e "GET $uri HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
-    cat <&3
+    if [ $use_https -eq 1 ]; then
+        $wget -q --save-headers --output-document - https://$host$uri
+    else
+        exec 3<>/dev/tcp/"$host"/80
+        echo -e "GET $uri HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
+        cat <&3
+    fi
 }
 
 monitor_progress () {
@@ -281,6 +287,12 @@ latest_local_version() {
 
 load_remote_versions () {
     local line
+
+    if [ -z "$wget" ]; then
+        echo "Abort, wget not found. Please apt install wget"
+        exit
+    fi
+
     if [ ${#REMOTE_VERSIONS[@]} -eq 0 ]; then
         [ -z "$1" ] && logn "Downloading index from $ppa_host"
         index=$(download $ppa_host $ppa_index)
@@ -308,6 +320,13 @@ latest_remote_version () {
 
     sorted=($(echo ${REMOTE_VERSIONS[*]} | tr ' ' '\n' | sort -V | tr '\n' ' '))
     echo "${sorted[${#sorted[@]}-1]}"
+}
+
+check_environment () {
+    if [ $use_https -eq 1 ] && [ -z "$wget" ]; then
+        echo "Abort, wget not found. Please apt install wget"
+        exit 1
+    fi
 }
 
 # execute requested action
@@ -348,6 +367,8 @@ Optional:
         ;;
 
     check)
+        check_environment
+
         logn "Finding latest version available on $ppa_host"
         latest_version=$(latest_remote_version)
         log ": $latest_version"
@@ -377,6 +398,7 @@ Optional:
         done) | $column
         ;;
     remote-list)
+        check_environment
         load_remote_versions
         
         [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
@@ -388,6 +410,7 @@ Optional:
         done) | $column
         ;;
     install)
+        check_environment
         load_local_versions
         
         if [ -z "${action_data[0]}" ]; then

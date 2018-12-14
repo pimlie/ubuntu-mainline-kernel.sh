@@ -9,6 +9,7 @@ Install
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
 chmod +x ubuntu-mainline-kernel.sh
 sudo mv ubuntu-mainline-kernel.sh /usr/local/bin/
+apt install wget
 ```
 
 If you want to automatically check for a new kernel version when you login:
@@ -98,6 +99,7 @@ Dependencies
 * bash
 * gnucoreutils
 * dpkg
+* wget (since 2018-12-14 as kernel ppa is now https only)
 
 Optional dependencies
 ----------------
