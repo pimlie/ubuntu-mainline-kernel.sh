@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-
+# Check if we are running on an Ubuntu-like OS
 [ -f "/etc/os-release" ] && {
     source /etc/os-release
     [[ "$ID" == "ubuntu" ]] || [[ "$ID_LIKE" =~ "ubuntu" ]]
@@ -12,35 +12,98 @@
     }
 }
 
-#default values
+# Ubuntu Kernel PPA info
 ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
 ppa_key="17C622B0"
 
-use_https=1
+# If quite=1 then no log messages are printed (except errors)
 quite=0
-cleanup_files=1
-do_install=1
-use_lowlatency=0
-use_lpae=0
-use_rc=0
-# signed_only=0
+
+# If check_signature=0 then the signature of the CHECKSUMS file will not be checked
 check_signature=1
+
+# If check_checksum=0 then the checksums of the .deb files will not be checked
 check_checksum=1
-assume_yes=0
-LOCAL_VERSIONS=()
-REMOTE_VERSIONS=()
-run_action="help"
-action_data=()
-debug_target="/dev/null"
-workdir="/tmp/$(basename "$0")/"
+
+# If doublecheckversion=1 then also check the version specific ppa page to make
+# sure the kernel build was succesfull
+doublecheckversion=1
+
+# Connect over http or https to ppa (only https works)
+use_https=1
+
+# Path to sudo command
 sudo=$(command -v sudo)
+
+# Path to wget command
 wget=$(command -v wget)
-ARCH=$(dpkg --print-architecture)
+
+
+#####
+## Below are internal variables of which most can be toggled by command options
+## DONT CHANGE THESE MANUALLY
+#####
+
+# (internal) If cleanup_files=1 then before exiting all downloaded/temporaryfiles
+# are removed
+cleanup_files=1
+
+# (internal) If do_install=0 downloaded deb files will not be installed
+do_install=1
+
+# (internal) If use_lowlatency=1 then the lowlatency kernel will be installed
+use_lowlatency=0
+
+# (internal) If use_lpae=1 then the lpae kernel will be installed
+use_lpae=0
+
+# (internal) If use_snapdragon=1 then the snapdragon kernel will be installed
+use_snapdragon=0
+
+# (internal) If use_rc=1 then release candidate kernel versions are also checked
+use_rc=0
+
+# (internal) If assume_yes=1 assume yes on all prompts
+assume_yes=0
+
+# (internal) How many files we expect to retrieve from the ppa
+# checksum, signature, header-all, header-arch, image(-unsigned), modules
+expected_files_count=6
+
+# (internal) Which action/command the script should run
+run_action="help"
+
+# (internal) The workdir where eg the .deb files are downloaded
+workdir="/tmp/$(basename "$0")/"
+
+# (internal) The stdio where all detail output should be sent
+debug_target="/dev/null"
+
+# (internal) Holds all version numbers of locally installed ppa kernels
+LOCAL_VERSIONS=()
+
+# (internal) Holds all version numbers of available ppa kernels
+REMOTE_VERSIONS=()
+
+# (internal) The architecture of the local system
+arch=$(dpkg --print-architecture)
+
+# (internal) The text to search for to check if the build was succesful
+build_succeeded_text="Build for ${arch} succeeded"
+
+# (internal) The pid of the child process which checks download progress
 monitor_pid=0
+
+# (internal) The size of the file which is being downloaded
 download_size=0
 
-# helper functions
+action_data=()
+
+#####
+## helper functions
+#####
+
 single_action () {
     [ "$run_action" != "help" ] && {
         err "Abort, only one argument can be supplied. See -h"
@@ -64,7 +127,10 @@ err () {
     echo "$@" >&2
 }
 
-#parse options
+#####
+## Simple command options parser
+#####
+
 while (( "$#" )); do
     argarg_required=0
     
@@ -114,7 +180,7 @@ while (( "$#" )); do
             fi
             ;;
         -ll|--lowlatency|--low-latency)
-            [[ "$ARCH" != "amd64" ]] && [[ "$ARCH" != "i386" ]] && { 
+            [[ "$arch" != "amd64" ]] && [[ "$arch" != "i386" ]] && { 
                 err "Low-latency kernels are only available for amd64 or i386 architectures"
                 exit 3
             }
@@ -122,18 +188,25 @@ while (( "$#" )); do
             use_lowlatency=1
             ;;
         -lpae|--lpae)
-            [[ "$ARCH" != "armhf" ]] && { 
+            [[ "$arch" != "armhf" ]] && { 
                 err "Large Physical Address Extension (LPAE) kernels are only available for the armhf architecture"
                 exit 3
             }
             
             use_lpae=1
             ;;
+        --snapdragon)
+            [[ "$arch" != "arm64" ]] && { 
+                err "Snapdragon kernels are only available for the arm64 architecture"
+                exit 3
+            }
+            
+            use_snapdragon=1
+            ;;
         --rc)
             use_rc=1
             ;;
         -s|--signed)
-            # signed_only=1
             log "The option '--signed' is not yet implemented"
             ;;
         --yes)
@@ -183,7 +256,10 @@ while (( "$#" )); do
     shift
 done
 
-# internal functions
+#####
+## internal functions
+#####
+
 containsElement () {
   local e
   for e in "${@:2}"; do [[ "$e" == "$1" ]] || [[ "$e" =~ $1- ]] && return 0; done
@@ -285,25 +361,28 @@ latest_local_version() {
     fi
 }
 
+remote_html_cache=""
 load_remote_versions () {
     local line
-
-    if [ -z "$wget" ]; then
-        echo "Abort, wget not found. Please apt install wget"
-        exit
-    fi
+    
+    [[ "$2" ]] && {
+      REMOTE_VERSIONS=()
+    }
 
     if [ ${#REMOTE_VERSIONS[@]} -eq 0 ]; then
-        [ -z "$1" ] && logn "Downloading index from $ppa_host"
-        index=$(download $ppa_host $ppa_index)
-        [ -z "$1" ] && log
+        if [ -z "$remote_html_cache" ]; then
+          [ -z "$1" ] && logn "Downloading index from $ppa_host"
+          remote_html_cache=$(download $ppa_host $ppa_index)
+          [ -z "$1" ] && log
+        fi
 
         IFS=$'\n'
-        for line in $index; do
+        for line in $remote_html_cache; do
             [[ "$line" =~ "folder" ]] || continue
             [[ $use_rc -eq 0 ]] && [[ "$line" =~ -rc ]] && continue
             [[ "$line" =~ v[0-9]+\.[0-9]+(\.[0-9]+)?(-rc[0-9]+)?/ ]] || continue
-            
+            [[ "$2" ]] && [[ ! "$line" =~ "$2" ]] && continue
+
             line=${line##*href=\"}
             line=${line%%\/\">*}
             [[ ! "$line" =~ (v[0-9]+\.[0-9]+)\.[0-9]+ ]] && [[ "$line" =~ (v[0-9]+\.[0-9]+)(-rc[0-9]+)? ]] && line=${BASH_REMATCH[1]}".0"${BASH_REMATCH[2]}
@@ -315,7 +394,7 @@ load_remote_versions () {
 }
 
 latest_remote_version () {
-    load_remote_versions 1
+    load_remote_versions 1 "$1"
     local sorted
 
     sorted=($(echo ${REMOTE_VERSIONS[*]} | tr ' ' '\n' | sort -V | tr '\n' ' '))
@@ -324,8 +403,8 @@ latest_remote_version () {
 
 check_environment () {
     if [ $use_https -eq 1 ] && [ -z "$wget" ]; then
-        echo "Abort, wget not found. Please apt install wget"
-        exit 1
+        err "Abort, wget not found. Please apt install wget"
+        exit 3
     fi
 }
 
@@ -341,9 +420,9 @@ Arguments:
   -i [VERSION]     Install kernel VERSION, see -l for list. You dont have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
-  -l [SEARCH]      List locally installedkernel versions. If an argument to this
+  -l [SEarch]      List locally installedkernel versions. If an argument to this
                    option is supplied it will search for that
-  -r [SEARCH]      List available kernel versions. If an argument to this option
+  -r [SEarch]      List available kernel versions. If an argument to this option
                    is supplied it will search for that
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
@@ -356,6 +435,7 @@ Optional:
                        is used. Path is relative from \$PWD
   -ll, --low-latency   Use the low-latency version of the kernel, only for amd64 & i386
   -lpae, --lpae        Use the Large Physical Address Extension kernel, only for armhf
+  --snapdragon         Use the Snapdragon kernel, only for arm64
   -do, --download-only Only download the deb files, do not install them
   -ns, --no-signature  Do not check the gpg signature of the checksums file
   -nc, --no-checksum   Do not check the sha checksums of the .deb files
@@ -377,12 +457,35 @@ Optional:
         installed_version=$(latest_local_version)
         log ": $installed_version"
 
+        # Check if build was successfull
+        if [ $doublecheckversion -gt 0 ]; then
+            ppa_uri=$ppa_index${latest_version%\.0}"/"
+            ppa_uri=${ppa_uri/\.0-rc/-rc}
+
+            index=$(download $ppa_host "$ppa_uri")
+            if [[ ! $index =~ $build_succeeded_text ]]; then
+                 log "A newer kernel version ($latest_version) was found but the build was not successful"
+                
+                [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
+                    "Kernel $latest_version available" \
+                    "A newer kernel version ($latest_version) is\navailable but the build was not successful"
+                exit 1
+            fi
+        fi
+
+        # Check installed minor branch
+        latest_minor_text=""
+        if [ "${latest_version%.*}" != "${installed_version%.*}" ]; then
+            latest_minor_version=$(latest_remote_version ${installed_version%.*})
+            latest_minor_text="Also version ${latest_minor_version} is available in your current branch\n\n"
+        fi
+
         if [ "$installed_version" != "$latest_version" ] && [ "$installed_version" = "$(echo -e "$latest_version\n$installed_version" | sort -V | head -n1)" ]; then
-            log "A newer kernel version ($latest_version) is available"
+            log "A newer kernel version ($latest_version) is available, latest in current branch is ${latest_minor_version}"
             
             [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                 "Kernel $latest_version available" \
-                "A newer kernel version ($latest_version) is\navailable on $ppa_host$ppa_uri\n\nRun '$(basename "$0") -i' to update"
+                "A newer kernel version ($latest_version) is available\n\n${latest_minor_text}Run '$(basename "$0") -i' to update\nor visit $ppa_host$ppa_uri"
             exit 1
         fi
         ;;
@@ -484,21 +587,41 @@ Optional:
         ppa_uri=${ppa_uri/\.0-rc/-rc}
 
         index=$(download $ppa_host "$ppa_uri")
+
+        if [[ ! $index =~ $build_succeeded_text ]]; then
+          err "Abort, the ${arch} build has not succeeded"
+          exit 1
+        fi
+
         index=${index##*<table}
         for line in $index; do
-            [[ "$line" =~ linux-(image(-(un)?signed)?|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${ARCH}|all).deb ]] || continue
+            [[ "$line" =~ linux-(image(-(un)?signed)?|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${arch}|all).deb ]] || continue
             
             [ $use_lowlatency -eq 0 ] && [[ "$line" =~ "-lowlatency" ]] && continue
             [ $use_lowlatency -eq 1 ] && [[ ! "$line" =~ "-lowlatency" ]] && [[ ! "$line" =~ "_all" ]] && continue
             [ $use_lpae -eq 0 ] && [[ "$line" =~ "-lpae" ]] && continue
             [ $use_lpae -eq 1 ] && [[ ! "$line" =~ "-lpae" ]] && [[ ! "$line" =~ "_all" ]] && continue
-            
+            [ $use_snapdragon -eq 0 ] && [[ "$line" =~ "-snapdragon" ]] && continue
+            [ $use_snapdragon -eq 1 ] && [[ ! "$line" =~ "-snapdragon" ]] && [[ ! "$line" =~ "_all" ]] && continue
+
             line=${line##*href=\"}
             line=${line%%\">*}
-            
+
             FILES+=("$line")
         done
         unset IFS
+
+        if [ ${#FILES[@]} -ne $expected_files_count ]; then
+            if [ $assume_yes -eq 0 ]; then
+                logn "Expected to need to download $expected_files_count files but found ${#FILES[@]}, continue? (y/N)"
+                read -rsn1 continue
+                echo ""
+            else
+                continue="y"
+            fi
+
+            [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
+        fi
 
         debs=()
         log "Will download ${#FILES[@]} files from $ppa_host:"
@@ -618,10 +741,10 @@ Optional:
             for pckg in $(dpkg -l linux-{image,image-[un]?signed,headers,modules}-"${uninstall_version#v}"* 2>$debug_target | cut -d " " -f 3); do
                 # only match kernels from ppa, they have 6 characters as second version string
                 if [[ "$pckg" =~ linux-headers-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
-                    pckgs+=("$pckg:$ARCH")
+                    pckgs+=("$pckg:$arch")
                     pckgs+=("$pckg:all")
                 elif [[ "$pckg" =~ linux-(image(-(un)?signed)?|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6} ]]; then
-                    pckgs+=("$pckg:$ARCH")
+                    pckgs+=("$pckg:$arch")
                 fi
             done    
             
