@@ -50,6 +50,7 @@ Optional:
                        is used. Path is relative from $PWD
   -ll, --low-latency   Use the low-latency version of the kernel, only for amd64 & i386
   -lpae, --lpae        Use the Large Physical Address Extension kernel, only for armhf
+  --snapdragon         Use the Snapdragon kernel, only for arm64
   -do, --download-only Only download the deb files, do not install them
   -ns, --no-signature  Do not check the gpg signature of the checksums file
   -nc, --no-checksum   Do not check the sha checksums of the .deb files
