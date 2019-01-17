@@ -324,7 +324,7 @@ remove_http_headers () {
         
         [ $nr -gt 100 ] && {
             err "Abort, could not remove http headers from file"
-            exit 500
+            exit 3
         }
     done
 }
@@ -365,7 +365,7 @@ remote_html_cache=""
 load_remote_versions () {
     local line
     
-    [[ "$2" ]] && {
+    [[ -n "$2" ]] && {
       REMOTE_VERSIONS=()
     }
 
@@ -381,7 +381,7 @@ load_remote_versions () {
             [[ "$line" =~ "folder" ]] || continue
             [[ $use_rc -eq 0 ]] && [[ "$line" =~ -rc ]] && continue
             [[ "$line" =~ v[0-9]+\.[0-9]+(\.[0-9]+)?(-rc[0-9]+)?/ ]] || continue
-            [[ "$2" ]] && [[ ! "$line" =~ "$2" ]] && continue
+            [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
 
             line=${line##*href=\"}
             line=${line%%\/\">*}
@@ -476,7 +476,7 @@ Optional:
         # Check installed minor branch
         latest_minor_text=""
         if [ "${latest_version%.*}" != "${installed_version%.*}" ]; then
-            latest_minor_version=$(latest_remote_version ${installed_version%.*})
+            latest_minor_version=$(latest_remote_version "${installed_version%.*}")
             latest_minor_text="Also version ${latest_minor_version} is available in your current branch\n\n"
         fi
 
