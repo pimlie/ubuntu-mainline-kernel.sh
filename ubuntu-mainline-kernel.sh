@@ -455,6 +455,7 @@ Optional:
         
         logn "Finding latest installed version"
         installed_version=$(latest_local_version)
+        installed_version=${installed_version%-*}
         log ": $installed_version"
 
         # Check if build was successfull
@@ -475,17 +476,23 @@ Optional:
 
         # Check installed minor branch
         latest_minor_text=""
-        if [ "${latest_version%.*}" != "${installed_version%.*}" ]; then
+        latest_minor_notify=""
+        latest_minor_version=""
+        if [ -n "${installed_version}" ] && [ "${latest_version%.*}" != "${installed_version%.*}" ]; then
             latest_minor_version=$(latest_remote_version "${installed_version%.*}")
-            latest_minor_text="Also version ${latest_minor_version} is available in your current branch\n\n"
+
+            if [ "$installed_version" != "$latest_minor_version" ]; then
+              latest_minor_text=", latest in current branch is ${latest_minor_version}"
+              latest_minor_notify="Version ${latest_minor_version} is available in the current ${installed_version%.*} branch\n\n"
+            fi
         fi
 
         if [ "$installed_version" != "$latest_version" ] && [ "$installed_version" = "$(echo -e "$latest_version\n$installed_version" | sort -V | head -n1)" ]; then
-            log "A newer kernel version ($latest_version) is available, latest in current branch is ${latest_minor_version}"
+            log "A newer kernel version ($latest_version) is available${latest_minor_text}"
             
             [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                 "Kernel $latest_version available" \
-                "A newer kernel version ($latest_version) is available\n\n${latest_minor_text}Run '$(basename "$0") -i' to update\nor visit $ppa_host$ppa_uri"
+                "A newer kernel version ($latest_version) is available\n\n${latest_minor_notify}Run '$(basename "$0") -i' to update\nor visit $ppa_host$ppa_uri"
             exit 1
         fi
         ;;
