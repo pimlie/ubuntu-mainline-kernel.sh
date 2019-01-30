@@ -478,7 +478,7 @@ Optional:
         latest_minor_text=""
         latest_minor_notify=""
         latest_minor_version=""
-        if [ -n "${installed_version}" ] && [ "${latest_version}" != "none" ] && [ "${latest_version%.*}" != "${installed_version%.*}" ]; then
+        if [ -n "${installed_version}" ] && [ "${installed_version}" != "none" ] && [ "${latest_version%.*}" != "${installed_version%.*}" ]; then
             latest_minor_version=$(latest_remote_version "${installed_version%.*}")
 
             if [ "$installed_version" != "$latest_minor_version" ]; then
