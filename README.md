@@ -64,7 +64,7 @@ Example output
 
 Install latest version:
 ```
- ~ $ kernel-mainline-ppa.sh -i
+ ~ $ ubuntu-mainline-kernel.sh -i
 Finding latest version available on kernel.ubuntu.com
 Latest version is v4.9.0 but seems its already installed, continue? (y/N) 
 Will download 5 files from kernel.ubuntu.com:
