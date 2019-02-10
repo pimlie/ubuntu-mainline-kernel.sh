@@ -27,7 +27,7 @@ There are no safeguards that at least one kernel is installed on your system. Be
 Usage
 -----------------
 ```
-Usage: ./ubuntu-mainline-kernel.sh -c|-l|-r|-u
+Usage: ubuntu-mainline-kernel.sh -c|-l|-r|-u
 
 Download & install the latest kernel available from kernel.ubuntu.com
 
@@ -64,7 +64,7 @@ Example output
 
 Install latest version:
 ```
- ~ $ ./kernel-mainline-ppa.sh -i
+ ~ $ kernel-mainline-ppa.sh -i
 Finding latest version available on kernel.ubuntu.com
 Latest version is v4.9.0 but seems its already installed, continue? (y/N) 
 Will download 5 files from kernel.ubuntu.com:
@@ -81,7 +81,7 @@ Cleaning up work folder
 ```
 Uninstall a version from a list
 ```
- ~ $ ./ubuntu-mainline-kernel.sh -u
+ ~ $ ubuntu-mainline-kernel.sh -u
 Which kernel version do you wish to uninstall?
 [0]: v4.8.6-040806
 [1]: v4.8.8-040808
