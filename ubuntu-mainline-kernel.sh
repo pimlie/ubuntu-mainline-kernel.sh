@@ -690,7 +690,7 @@ Optional:
         if [ $do_install -eq 1 ]; then
             if [ ${#debs[@]} -gt 0 ]; then
                 log "Installing ${#debs[@]} packages"
-                $sudo dpkg -i "${debs[@]}" >$debug_target 2>&1
+                $sudo apt install "${debs[@]/#/./}" >$debug_target 2>&1
             else
                 warn "Did not find any .deb files to install"
             fi
