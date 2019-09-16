@@ -34,7 +34,7 @@ doublecheckversion=1
 use_https=1
 
 # Path to sudo command
-sudo=$(command -v sudo)
+sudo=$(command -v sudo -k)
 
 # Path to wget command
 wget=$(command -v wget)
