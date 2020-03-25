@@ -33,7 +33,7 @@ Download & install the latest kernel available from kernel.ubuntu.com
 
 Arguments:
   -c               Check if a newer kernel version is available
-  -i [VERSION]     Install kernel VERSION, see -l for list. You dont have to prefix
+  -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
   -l [SEARCH]      List locally installedkernel versions. If an argument to this
@@ -73,8 +73,8 @@ CHECKSUMS.gpg
 linux-headers-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb 
 linux-headers-4.9.0-040900_4.9.0-040900.201612111631_all.deb 
 linux-image-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb 
-Signature of checksum file has been succesfully verified
-Checksums of deb files have been succesfully verified with sha256sum
+Signature of checksum file has been successfully verified
+Checksums of deb files have been successfully verified with sha256sum
 Installing 3 packages
 [sudo] password for pimlie: 
 Cleaning up work folder
@@ -92,7 +92,7 @@ The following packages will be removed:
 linux-headers-4.8.6-040806-generic:amd64 linux-headers-4.8.6-040806-generic:all linux-image-4.8.6-040806-generic:amd64
 Are you really sure? (y/N)
 [sudo] password for pimlie: 
-Kernel v4.8.6 succesfully purged
+Kernel v4.8.6 successfully purged
 ```
 
 Dependencies
@@ -112,6 +112,6 @@ Optional dependencies
 
 TODO
 -----------------
-- [ ] Support daily kernel builds (on hold untill there is significant demand for this, PRs are also welcome)
+- [ ] Support daily kernel builds (on hold until there is significant demand for this, PRs are also welcome)
 
 
