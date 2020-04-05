@@ -27,7 +27,7 @@ check_signature=1
 check_checksum=1
 
 # If doublecheckversion=1 then also check the version specific ppa page to make
-# sure the kernel build was succesfull
+# sure the kernel build was successful
 doublecheckversion=1
 
 # Connect over http or https to ppa (only https works)
@@ -42,7 +42,7 @@ wget=$(command -v wget)
 
 #####
 ## Below are internal variables of which most can be toggled by command options
-## DONT CHANGE THESE MANUALLY
+## DON'T CHANGE THESE MANUALLY
 #####
 
 # (internal) If cleanup_files=1 then before exiting all downloaded/temporaryfiles
@@ -89,7 +89,7 @@ REMOTE_VERSIONS=()
 # (internal) The architecture of the local system
 arch=$(dpkg --print-architecture)
 
-# (internal) The text to search for to check if the build was succesful
+# (internal) The text to search for to check if the build was successfully
 build_succeeded_text="Build for ${arch} succeeded"
 
 # (internal) The pid of the child process which checks download progress
@@ -417,7 +417,7 @@ Download & install the latest kernel available from $ppa_host$ppa_uri
 
 Arguments:
   -c               Check if a newer kernel version is available
-  -i [VERSION]     Install kernel VERSION, see -l for list. You dont have to prefix
+  -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
   -l [SEarch]      List locally installedkernel versions. If an argument to this
@@ -458,7 +458,7 @@ Optional:
         installed_version=${installed_version%-*}
         log ": $installed_version"
 
-        # Check if build was successfull
+        # Check if build was successful
         if [ $doublecheckversion -gt 0 ]; then
             ppa_uri=$ppa_index${latest_version%\.0}"/"
             ppa_uri=${ppa_uri/\.0-rc/-rc}
@@ -659,7 +659,7 @@ Optional:
 
             if [ $check_signature -eq 1 ]; then
                 if gpg --verify CHECKSUMS.gpg CHECKSUMS >$debug_target 2>&1; then
-                    log "Signature of checksum file has been succesfully verified"
+                    log "Signature of checksum file has been successfully verified"
                 else
                     err "Abort, signature of checksum file is NOT OK"
                     exit 4
@@ -676,10 +676,10 @@ Optional:
                     shasum_result=$($xshasum --ignore-missing -c CHECKSUMS 2>>$debug_target | tee -a $debug_target | wc -l)
 
                     if [ "$shasum_result" -eq 0 ] || [ "$shasum_result" -ne ${#debs[@]} ]; then
-                        err "Abort, $shasum retuned an error $shasum_result"
+                        err "Abort, $shasum returned an error $shasum_result"
                         exit 4
                     else
-                        log "Checksums of deb files have been succesfully verified with $shasum"
+                        log "Checksums of deb files have been successfully verified with $shasum"
                     fi
 
                     break
@@ -772,7 +772,7 @@ Optional:
                 
                 if [ "$continue" == "y" ] || [ "$continue" == "Y" ]; then
                     if $sudo DEBIAN_FRONTEND=noninteractive dpkg --purge "${pckgs[@]}" 2>$debug_target >&2; then
-                        log "Kernel $uninstall_version succesfully purged"
+                        log "Kernel $uninstall_version successfully purged"
                         exit 0
                     fi
                 fi
