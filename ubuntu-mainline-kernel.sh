@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1117
+
 # Ubuntu Kernel PPA info
 ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
@@ -279,7 +281,6 @@ download () {
         $wget -q --save-headers --output-document - "https://$host$uri"
     else
         exec 3<>/dev/tcp/"$host"/80
-        # shellcheck disable=SC1117
         echo -e "GET $uri HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
         cat <&3
     fi
@@ -357,9 +358,7 @@ latest_local_version() {
 
     if [ ${#LOCAL_VERSIONS[@]} -gt 0 ]; then
         local sorted
-        IFS=$'\n'
-        sorted=($(sort -t"." -k1V,3 <<<"${LOCAL_VERSIONS[*]}"))
-        unset IFS
+        mapfile -t sorted < <(echo "${LOCAL_VERSIONS[*]}" | tr ' ' '\n' | sort -t"." -k1V,3)
 
         lv="${sorted[${#sorted[@]}-1]}"
         echo "${lv/-[0-9][0-9][0-9][0-9][0-9][0-9]rc/-rc}"
@@ -404,8 +403,7 @@ latest_remote_version () {
     load_remote_versions 1 "$1"
     local sorted
 
-    # shellcheck disable=SC2086
-    sorted=($(echo ${REMOTE_VERSIONS[*]} | tr ' ' '\n' | sort -V | tr '\n' ' '))
+    mapfile -t sorted < <(echo "${REMOTE_VERSIONS[*]}" | tr ' ' '\n' | sort -V)
     echo "${sorted[${#sorted[@]}-1]}"
 }
 
