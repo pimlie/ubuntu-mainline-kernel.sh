@@ -92,7 +92,7 @@ action_data=()
 ## Check if we are running on an Ubuntu-like OS
 #####
 
-# shellcheck disable=SC2015
+# shellcheck disable=SC1091,SC2015
 [ -f "/etc/os-release" ] && {
     source /etc/os-release
     [[ "$ID" == "ubuntu" ]] || [[ "$ID_LIKE" =~ "ubuntu" ]]
@@ -279,6 +279,7 @@ download () {
         $wget -q --save-headers --output-document - "https://$host$uri"
     else
         exec 3<>/dev/tcp/"$host"/80
+        # shellcheck disable=SC1117
         echo -e "GET $uri HTTP/1.0\r\nHost: $host\r\nConnection: close\r\n\r\n" >&3
         cat <&3
     fi
