@@ -18,10 +18,10 @@ wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/U
 mv UbuntuMainlineKernel.desktop ~/.config/autostart/
 ```
 
-Warning
+Warning :warning:
 -----------------
-Use this script at your own risk. You could remove all kernels with this script and leave your system unbootable. 
-There are no safeguards that at least one kernel is installed on your system. Be especially careful with the `--yes` option.
+Use this script at your own risk. You could remove all kernels with this script and leave your system unbootable.
+There is no safeguard that at least one kernel is installed on your system. Be especially careful with the `--yes` option.
 
 
 Usage
@@ -45,8 +45,8 @@ Arguments:
   -h               Show this message
 
 Optional:
-  -p, --path DIR       The working directory, .deb files will be downloaded into 
-                       this folder. If omitted, the folder /tmp/ubuntu-mainline-kernel.sh/ 
+  -p, --path DIR       The working directory, .deb files will be downloaded into
+                       this folder. If omitted, the folder /tmp/ubuntu-mainline-kernel.sh/
                        is used. Path is relative from $PWD
   -ll, --low-latency   Use the low-latency version of the kernel, only for amd64 & i386
   -lpae, --lpae        Use the Large Physical Address Extension kernel, only for armhf
@@ -59,39 +59,47 @@ Optional:
   --yes                Assume yes on all questions (use with caution!)
 ```
 
+Elevated privileges
+-------------------
+
+This script needs elevated privileges when installing or uninstalling kernels.
+
+Either run this script with sudo or configure the path to sudo within the script to sudo automatically
+
+
 Example output
 -------------------
 
 Install latest version:
 ```
- ~ $ ubuntu-mainline-kernel.sh -i
+ ~ $ sudo ubuntu-mainline-kernel.sh -i
 Finding latest version available on kernel.ubuntu.com
-Latest version is v4.9.0 but seems its already installed, continue? (y/N) 
+Latest version is v4.9.0 but seems its already installed, continue? (y/N)
 Will download 5 files from kernel.ubuntu.com:
-CHECKSUMS 
-CHECKSUMS.gpg 
-linux-headers-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb 
-linux-headers-4.9.0-040900_4.9.0-040900.201612111631_all.deb 
-linux-image-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb 
+CHECKSUMS
+CHECKSUMS.gpg
+linux-headers-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb
+linux-headers-4.9.0-040900_4.9.0-040900.201612111631_all.deb
+linux-image-4.9.0-040900-generic_4.9.0-040900.201612111631_amd64.deb
 Signature of checksum file has been successfully verified
 Checksums of deb files have been successfully verified with sha256sum
 Installing 3 packages
-[sudo] password for pimlie: 
+[sudo] password for pimlie:
 Cleaning up work folder
 ```
 Uninstall a version from a list
 ```
- ~ $ ubuntu-mainline-kernel.sh -u
+ ~ $ sudo ubuntu-mainline-kernel.sh -u
 Which kernel version do you wish to uninstall?
 [0]: v4.8.6-040806
 [1]: v4.8.8-040808
 [2]: v4.9.0-040900
 type the number between []: 0
 Are you sure you wish to remove kernel version v4.8.6-040806? (y/N)
-The following packages will be removed: 
+The following packages will be removed:
 linux-headers-4.8.6-040806-generic:amd64 linux-headers-4.8.6-040806-generic:all linux-image-4.8.6-040806-generic:amd64
 Are you really sure? (y/N)
-[sudo] password for pimlie: 
+[sudo] password for pimlie:
 Kernel v4.8.6 successfully purged
 ```
 
