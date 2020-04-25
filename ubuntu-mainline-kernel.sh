@@ -165,7 +165,7 @@ while (( "$#" )); do
                 err "Option $1 requires an argument."
                 exit 2
             else
-                workdir="$2"
+                workdir="$(realpath "$2")/"
                 shift
 
                 if [ ! -d "$workdir" ]; then
