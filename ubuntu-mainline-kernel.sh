@@ -468,7 +468,7 @@ Optional:
             if [[ ! $index =~ $build_succeeded_text ]]; then
                  log "A newer kernel version ($latest_version) was found but the build was not successful"
 
-                [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
+                [ -n "$DISPLAY" ] && [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                     "Kernel $latest_version available" \
                     "A newer kernel version ($latest_version) is\navailable but the build was not successful"
                 exit 1
@@ -491,7 +491,7 @@ Optional:
         if [ "$installed_version" != "$latest_version" ] && [ "$installed_version" = "$(echo -e "$latest_version\n$installed_version" | sort -V | head -n1)" ]; then
             log "A newer kernel version ($latest_version) is available${latest_minor_text}"
 
-            [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
+            [ -n "$DISPLAY" ] && [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                 "Kernel $latest_version available" \
                 "A newer kernel version ($latest_version) is available\n\n${latest_minor_notify}Run '$(basename "$0") -i' to update\nor visit $ppa_host$ppa_uri"
             exit 1
