@@ -1,17 +1,5 @@
 #!/usr/bin/env bash
 
-# Check if we are running on an Ubuntu-like OS
-[ -f "/etc/os-release" ] && {
-    source /etc/os-release
-    [[ "$ID" == "ubuntu" ]] || [[ "$ID_LIKE" =~ "ubuntu" ]]
-} || {
-    OS=$(lsb_release -si 2>&-)
-    [[ "$OS" == "Ubuntu" ]] || [[ "$OS" == "LinuxMint" ]]  || [[ "$OS" == "neon" ]] || {
-        echo "Abort, this script is only intended for Ubuntu-like distro's"
-        exit 2
-    }
-}
-
 # Ubuntu Kernel PPA info
 ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
@@ -39,7 +27,6 @@ sudo=""
 
 # Path to wget command
 wget=$(command -v wget)
-
 
 #####
 ## Below are internal variables of which most can be toggled by command options
@@ -100,6 +87,22 @@ monitor_pid=0
 download_size=0
 
 action_data=()
+
+#####
+## Check if we are running on an Ubuntu-like OS
+#####
+
+# shellcheck disable=SC2015
+[ -f "/etc/os-release" ] && {
+    source /etc/os-release
+    [[ "$ID" == "ubuntu" ]] || [[ "$ID_LIKE" =~ "ubuntu" ]]
+} || {
+    OS=$(lsb_release -si 2>&-)
+    [[ "$OS" == "Ubuntu" ]] || [[ "$OS" == "LinuxMint" ]]  || [[ "$OS" == "neon" ]] || {
+        echo "Abort, this script is only intended for Ubuntu-like distro's"
+        exit 2
+    }
+}
 
 #####
 ## helper functions
@@ -245,6 +248,7 @@ while (( "$#" )); do
             shift
         }
     elif [ $argarg_required -eq 2 ]; then
+        # shellcheck disable=SC2015
         [ -n "$2" ] && [ "${2##-}" == "$2" ] && {
             action_data+=("$2")
             shift
@@ -288,6 +292,7 @@ monitor_progress () {
     printf "%s: " "$msg"
     (while :; do for c in / - \\ \|; do
         [[ -f "$file" ]] && {
+            # shellcheck disable=SC2015
             [[ $download_size -le 0 ]] && {
                 download_size=$(($(head -n20 "$file" | grep -aoi -E "Content-Length: [0-9]+" | cut -d" " -f2) + 0))
                 printf ' %d%% %s' 0 "$c"
@@ -398,6 +403,7 @@ latest_remote_version () {
     load_remote_versions 1 "$1"
     local sorted
 
+    # shellcheck disable=SC2086
     sorted=($(echo ${REMOTE_VERSIONS[*]} | tr ' ' '\n' | sort -V | tr '\n' ' '))
     echo "${sorted[${#sorted[@]}-1]}"
 }
@@ -500,6 +506,7 @@ Optional:
     local-list)
         load_local_versions
 
+        # shellcheck disable=SC2015
         [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
 
         (for version in "${LOCAL_VERSIONS[@]}"; do
@@ -512,6 +519,7 @@ Optional:
         check_environment
         load_remote_versions
 
+        # shellcheck disable=SC2015
         [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
 
         (for version in "${REMOTE_VERSIONS[@]}"; do
@@ -674,6 +682,7 @@ Optional:
             for shasum in "${shasums[@]}"; do
                 xshasum=$(command -v "$shasum")
                 if [ -n "$xshasum" ] && [ -x "$xshasum" ]; then
+                    # shellcheck disable=SC2094
                     shasum_result=$($xshasum --ignore-missing -c CHECKSUMS 2>>$debug_target | tee -a $debug_target | wc -l)
 
                     if [ "$shasum_result" -eq 0 ] || [ "$shasum_result" -ne ${#debs[@]} ]; then
