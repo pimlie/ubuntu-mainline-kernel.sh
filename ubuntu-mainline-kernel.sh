@@ -17,8 +17,8 @@ ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
 ppa_key="17C622B0"
 
-# If quite=1 then no log messages are printed (except errors)
-quite=0
+# If quiet=1 then no log messages are printed (except errors)
+quiet=0
 
 # If check_signature=0 then the signature of the CHECKSUMS file will not be checked
 check_signature=1
@@ -112,15 +112,15 @@ single_action () {
 }
 
 log () {
-    [ $quite -eq 0 ] && echo "$@"
+    [ $quiet -eq 0 ] && echo "$@"
 }
 
 logn () {
-    [ $quite -eq 0 ] && echo -n "$@"
+    [ $quiet -eq 0 ] && echo -n "$@"
 }
 
 warn () {
-    [ $quite -eq 0 ] && echo "$@" >&2
+    [ $quiet -eq 0 ] && echo "$@" >&2
 }
 
 err () {
@@ -212,8 +212,8 @@ while (( "$#" )); do
         --yes)
             assume_yes=1
             ;;
-        -q|--quite)
-            [ "$debug_target" == "/dev/null" ] && { quite=1; }
+        -q|--quiet)
+            [ "$debug_target" == "/dev/null" ] && { quiet=1; }
             ;;
         -do|--download-only)
             do_install=0
@@ -227,7 +227,7 @@ while (( "$#" )); do
             ;;
         -d|--debug)
             debug_target="/dev/stderr"
-            quite=0
+            quiet=0
             ;;
         -h|--help)
             run_action="help"
@@ -536,7 +536,7 @@ Optional:
                 
             if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
                 logn ", continue? (y/N) "
-                [ $quite -eq 0 ] && read -rsn1 continue
+                [ $quiet -eq 0 ] && read -rsn1 continue
                 log
                 
                 [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
@@ -559,7 +559,7 @@ Optional:
             
             if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
                 logn "It seems version $version is already installed, continue? (y/N) "
-                [ $quite -eq 0 ] && read -rsn1 continue
+                [ $quiet -eq 0 ] && read -rsn1 continue
                 log
                 
                 [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
