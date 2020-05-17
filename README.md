@@ -3,6 +3,14 @@ ubuntu-mainline-kernel.sh
 
 Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kernels from the [Ubuntu Kernel PPA](http://kernel.ubuntu.com/~kernel-ppa/mainline/).
 
+Warnings
+-----------------
+:warning: Use this script at your own risk. Be aware that the kernels installed by this script are [unsupported](https://wiki.ubuntu.com/Kernel/MainlineBuilds#Support_.28BEWARE:_there_is_none.29)
+
+:unlock: Do not use this script if you don't have to or don't know what you are doing. You won't be [covered](https://github.com/pimlie/ubuntu-mainline-kernel.sh/issues/32) by any security guarantees. The intended purpose by Ubuntu for the mainline ppa kernels is for debugging issues.
+
+:information_source: We strongly advise to keep the default Ubuntu kernel installed as there is no safeguard that at least one kernel is installed on your system.
+
 Install
 ----------------
 ```
@@ -17,12 +25,6 @@ If you want to automatically check for a new kernel version when you login:
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/UbuntuMainlineKernel.desktop
 mv UbuntuMainlineKernel.desktop ~/.config/autostart/
 ```
-
-Warning :warning:
------------------
-Use this script at your own risk. You could remove all kernels with this script and leave your system unbootable.
-There is no safeguard that at least one kernel is installed on your system. Be especially careful with the `--yes` option.
-
 
 Usage
 -----------------
@@ -121,5 +123,3 @@ Optional dependencies
 TODO
 -----------------
 - [ ] Support daily kernel builds (on hold until there is significant demand for this, PRs are also welcome)
-
-
