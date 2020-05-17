@@ -780,7 +780,7 @@ Optional:
                 fi
 
                 if [ "$continue" == "y" ] || [ "$continue" == "Y" ]; then
-                    if $sudo DEBIAN_FRONTEND=noninteractive dpkg --purge "${pckgs[@]}" 2>$debug_target >&2; then
+                    if $sudo env DEBIAN_FRONTEND=noninteractive dpkg --purge "${pckgs[@]}" 2>$debug_target >&2; then
                         log "Kernel $uninstall_version successfully purged"
                         exit 0
                     fi
