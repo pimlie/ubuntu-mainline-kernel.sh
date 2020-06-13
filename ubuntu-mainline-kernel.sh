@@ -80,7 +80,8 @@ REMOTE_VERSIONS=()
 arch=$(dpkg --print-architecture)
 
 # (internal) The text to search for to check if the build was successfully
-build_succeeded_text="Build for ${arch} succeeded"
+# NOTE: New succeed text since v5.6.18
+build_succeeded_text="(Build for ${arch} succeeded|Test ${arch}/build succeeded)"
 
 # (internal) The pid of the child process which checks download progress
 monitor_pid=0
