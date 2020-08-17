@@ -56,7 +56,7 @@ Optional:
   -do, --download-only Only download the deb files, do not install them
   -ns, --no-signature  Do not check the gpg signature of the checksums file
   -nc, --no-checksum   Do not check the sha checksums of the .deb files
-  -d, --debug          Show debug information, all internal command's echo their output
+  -d, --debug          Show debug information, all internal commands echo their output
   --rc                 Also include release candidates
   --yes                Assume yes on all questions (use with caution!)
 ```
