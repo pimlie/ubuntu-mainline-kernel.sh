@@ -92,6 +92,15 @@ download_size=0
 action_data=()
 
 #####
+## Check if we are running as root
+#####
+
+if [ "$(id -u)" -ne 0 ]; then
+  echo "Please run as root"
+  exit 2
+fi
+
+#####
 ## Check if we are running on an Ubuntu-like OS
 #####
 
