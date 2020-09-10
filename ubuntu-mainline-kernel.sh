@@ -427,9 +427,9 @@ Arguments:
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
-  -l [SEarch]      List locally installed kernel versions. If an argument to this
+  -l [SEARCH]      List locally installed kernel versions. If an argument to this
                    option is supplied it will search for that
-  -r [SEarch]      List available kernel versions. If an argument to this option
+  -r [SEARCH]      List available kernel versions. If an argument to this option
                    is supplied it will search for that
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
