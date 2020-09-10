@@ -388,7 +388,7 @@ load_remote_versions () {
             [[ $use_rc -eq 0 ]] && [[ "$line" =~ -rc ]] && continue
             [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
             REMOTE_VERSIONS+=("$line")
-        done < <(grep -oP '^.*?DIR.*?href="\Kv\d+(?:\.\d+){1,2}(?:-rc\d+)?(?=/")' <<<"$remote_html_cache" | perl -pe 's/^v\d+\.\d+(?=-|$)/$&.0/; s/^[^-]*?$/$&-rd1/' | sort -V | perl -pe 's/-rd.*//')
+        done < <(grep -oP '^.*?DIR.*?href="\Kv\d+(?:\.\d+){1,2}(?:-rc\d+)?(?=/")' <<<"$remote_html_cache" | perl -pe 's/^v\d++\.\d++(?!\.)/$&.0/; s/-/~/' | sort -V | perl -pe 's/~/-/')
         unset IFS
     fi
 }
