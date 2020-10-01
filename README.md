@@ -5,6 +5,7 @@ Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kern
 
 Warnings
 -----------------
+
 :warning: Use this script at your own risk. Be aware that the kernels installed by this script are [unsupported](https://wiki.ubuntu.com/Kernel/MainlineBuilds#Support_.28BEWARE:_there_is_none.29)
 
 :unlock: Do not use this script if you don't have to or don't know what you are doing. You won't be [covered](https://github.com/pimlie/ubuntu-mainline-kernel.sh/issues/32) by any security guarantees. The intended purpose by Ubuntu for the mainline ppa kernels is for debugging issues.
@@ -13,7 +14,8 @@ Warnings
 
 Install
 ----------------
-```
+
+```bash
 apt install wget
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
 chmod +x ubuntu-mainline-kernel.sh
@@ -21,13 +23,15 @@ sudo mv ubuntu-mainline-kernel.sh /usr/local/bin/
 ```
 
 If you want to automatically check for a new kernel version when you login:
-```
+
+```bash
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/UbuntuMainlineKernel.desktop
 mv UbuntuMainlineKernel.desktop ~/.config/autostart/
 ```
 
 Usage
 -----------------
+
 ```
 Usage: ubuntu-mainline-kernel.sh -c|-l|-r|-u
 
@@ -89,8 +93,10 @@ Installing 3 packages
 [sudo] password for pimlie:
 Cleaning up work folder
 ```
+
 Uninstall a version from a list
-```
+
+```bash
  ~ $ sudo ubuntu-mainline-kernel.sh -u
 Which kernel version do you wish to uninstall?
 [0]: v4.8.6-040806
@@ -105,8 +111,21 @@ Are you really sure? (y/N)
 Kernel v4.8.6 successfully purged
 ```
 
+Or you can do the following
+
+```bash
+~ $ sudo ubuntu-mainline-kernel.sh -u 4.8.6
+Are you sure you wish to remove kernel version v4.8.6-040806? (y/N)
+The following packages will be removed:
+linux-headers-4.8.6-040806-generic:amd64 linux-headers-4.8.6-040806-generic:all linux-image-4.8.6-040806-generic:amd64
+Are you really sure? (y/N)
+[sudo] password for pimlie:
+Kernel v4.8.6 successfully purged
+```
+
 Dependencies
 ----------------
+
 * bash
 * gnucoreutils
 * dpkg
@@ -114,6 +133,7 @@ Dependencies
 
 Optional dependencies
 ----------------
+
 * libnotify-bin (to show notify bubble when new version is found)
 * bsdmainutils (format output of -l, -r with column)
 * gpg (to check the signature of the checksum file)
@@ -122,4 +142,5 @@ Optional dependencies
 
 TODO
 -----------------
-- [ ] Support daily kernel builds (on hold until there is significant demand for this, PRs are also welcome)
+
+-[ ] Support daily kernel builds (on hold until there is significant demand for this, PRs are also welcome)
