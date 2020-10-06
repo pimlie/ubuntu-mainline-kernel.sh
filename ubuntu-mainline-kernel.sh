@@ -369,6 +369,22 @@ latest_local_version() {
 }
 
 remote_html_cache=""
+version_parse() {
+    local line
+    while read -r line; do
+        if [[ $line =~ DIR.*href=\"(v[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?)(-(rc[[:digit:]]+))?/\" ]]; then
+            line="${BASH_REMATCH[1]}"
+            if [[ -z "${BASH_REMATCH[2]}" ]]; then
+                line="$line.0"
+            fi
+            if [[ -n "${BASH_REMATCH[3]}" ]]; then
+                line="$line~${BASH_REMATCH[4]}"
+            fi
+            echo "$line"
+        fi
+    done <<<"$remote_html_cache"
+}
+
 load_remote_versions () {
     local line
 
@@ -385,10 +401,13 @@ load_remote_versions () {
 
         IFS=$'\n'
         while read -r line; do
-            [[ $use_rc -eq 0 ]] && [[ "$line" =~ -rc ]] && continue
+            if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
+                [[ $use_rc -eq 0 ]] && continue
+                line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+            fi
             [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
             REMOTE_VERSIONS+=("$line")
-        done < <(grep -oP '^.*?DIR.*?href="\Kv\d+(?:\.\d+){1,2}(?:-rc\d+)?(?=/")' <<<"$remote_html_cache" | perl -pe 's/^v\d++\.\d++(?!\.)/$&.0/; s/-/~/' | sort -V | perl -pe 's/~/-/')
+        done < <(version_parse | sort -V)
         unset IFS
     fi
 }
