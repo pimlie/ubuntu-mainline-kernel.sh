@@ -415,6 +415,13 @@ check_environment () {
     fi
 }
 
+guard_run_as_root () {
+  if [ "$(id -u)" -ne 0 ]; then
+    echo "The '$run_action' command requires root privileges"
+    exit 2
+  fi  
+}
+
 # execute requested action
 case $run_action in
     help)
@@ -529,6 +536,9 @@ Optional:
         done) | $column
         ;;
     install)
+        # only ensure running if the kernel files should be installed
+        [ $do_install -eq 1 ] && guard_run_as_root
+
         check_environment
         load_local_versions
 
@@ -738,6 +748,7 @@ Optional:
         fi
         ;;
     uninstall)
+        guard_run_as_root
         load_local_versions
 
         if [ ${#LOCAL_VERSIONS[@]} -eq 0 ]; then
