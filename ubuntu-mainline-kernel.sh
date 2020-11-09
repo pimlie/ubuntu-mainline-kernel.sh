@@ -409,7 +409,7 @@ load_remote_versions () {
             fi
             [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
             REMOTE_VERSIONS+=("$line")
-        done < <(version_parse | sort -V)
+        done < <(parse_remote_versions | sort -V)
         unset IFS
     fi
 }
