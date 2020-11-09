@@ -369,7 +369,7 @@ latest_local_version() {
 }
 
 remote_html_cache=""
-version_parse() {
+parse_remote_versions() {
     local line
     while read -r line; do
         if [[ $line =~ DIR.*href=\"(v[[:digit:]]+\.[[:digit:]]+(\.[[:digit:]]+)?)(-(rc[[:digit:]]+))?/\" ]]; then
@@ -377,6 +377,7 @@ version_parse() {
             if [[ -z "${BASH_REMATCH[2]}" ]]; then
                 line="$line.0"
             fi
+            # temporarily substitute rc suffix join character for correct version sort
             if [[ -n "${BASH_REMATCH[3]}" ]]; then
                 line="$line~${BASH_REMATCH[4]}"
             fi
@@ -401,6 +402,7 @@ load_remote_versions () {
 
         IFS=$'\n'
         while read -r line; do
+            # reinstate original rc suffix join character
             if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
                 [[ $use_rc -eq 0 ]] && continue
                 line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
