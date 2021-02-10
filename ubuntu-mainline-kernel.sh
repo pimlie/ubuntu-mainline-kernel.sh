@@ -369,6 +369,20 @@ latest_local_version() {
 }
 
 remote_html_cache=""
+remote_versions_read=0
+
+normalize_version_for_match() {
+    local version="$1"
+    if [[ -n "$version" && ! "$version" =~ [*] ]]; then
+        # not already a glob pattern
+        if [[ ! "$version" =~ ^v ]]; then
+            version="v$version"
+        fi
+        version="${version%.}"
+    fi
+    echo "$version"
+}
+
 parse_remote_versions() {
     local line
     while read -r line; do
@@ -389,34 +403,41 @@ parse_remote_versions() {
 load_remote_versions () {
     local line
 
-    [[ -n "$2" ]] && {
-      REMOTE_VERSIONS=()
+    [[ -n "$1" ]] && {
+        remote_versions_read=0
     }
 
-    if [ ${#REMOTE_VERSIONS[@]} -eq 0 ]; then
+    if [ $remote_versions_read -eq 0 ]; then
+        REMOTE_VERSIONS=()
         if [ -z "$remote_html_cache" ]; then
-          [ -z "$1" ] && logn "Downloading index from $ppa_host"
+          [ -z "$2" ] && logn "Downloading index from $ppa_host"
           remote_html_cache=$(download $ppa_host $ppa_index)
-          [ -z "$1" ] && log
+          [ -z "$2" ] && log
         fi
 
+        version_for_match="$(normalize_version_for_match "$1")"
         IFS=$'\n'
         while read -r line; do
+            (( remote_versions_read++ ))
             # reinstate original rc suffix join character
             if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
                 [[ $use_rc -eq 0 ]] && continue
                 line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
             fi
-            [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
-            REMOTE_VERSIONS+=("$line")
+            # shellcheck disable=SC2053
+            if [[ -z "$version_for_match" ]] || \
+                [[ "$line" == $version_for_match || "$line" == $version_for_match.* || "$line" == $version_for_match-* ]]
+            then
+                REMOTE_VERSIONS+=("$line")
+            fi
         done < <(parse_remote_versions | sort -V)
         unset IFS
     fi
 }
 
 latest_remote_version () {
-    load_remote_versions 1 "$1"
-    echo "${REMOTE_VERSIONS[${#REMOTE_VERSIONS[@]}-1]}"
+    load_remote_versions "$1" 1
+    [[ ${#REMOTE_VERSIONS[@]} -gt 0 ]] && echo "${REMOTE_VERSIONS[${#REMOTE_VERSIONS[@]}-1]}"
 }
 
 check_environment () {
@@ -430,7 +451,7 @@ guard_run_as_root () {
   if [ "$(id -u)" -ne 0 ]; then
     echo "The '$run_action' command requires root privileges"
     exit 2
-  fi  
+  fi
 }
 
 # execute requested action
@@ -535,15 +556,13 @@ Optional:
         ;;
     remote-list)
         check_environment
-        load_remote_versions
+        load_remote_versions "${action_data[0]}"
 
         # shellcheck disable=SC2015
         [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
 
         (for version in "${REMOTE_VERSIONS[@]}"; do
-            if [ -z "${action_data[0]}" ] || [[ "$version" =~ ${action_data[0]} ]]; then
-                echo "$version"
-            fi
+            echo "$version"
         done) | $column
         ;;
     install)
@@ -558,28 +577,16 @@ Optional:
             version=$(latest_remote_version)
             log
 
-            if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
-                logn "Latest version is $version but seems its already installed"
-            else
-                logn "Latest version is: $version"
-            fi
+            [[ -z "$version" ]] && {
+                err "No readable versions found"
+                exit 2
+            }
 
-            if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
-                logn ", continue? (y/N) "
-                [ $quiet -eq 0 ] && read -rsn1 continue
-                log
-
-                [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
-            else
-                log
-            fi
+            logn "Latest version is $version"
         else
-            load_remote_versions
+            load_remote_versions "${action_data[0]}"
 
-            version=""
-            if containsElement "v${action_data[0]#v}" "${REMOTE_VERSIONS[@]}"; then
-                version="v"${action_data[0]#v}
-            fi
+            version=$(latest_remote_version)
 
             [[ -z "$version" ]] && {
                 err "Version '${action_data[0]}' not found"
@@ -587,13 +594,20 @@ Optional:
             }
             shift
 
-            if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
-                logn "It seems version $version is already installed, continue? (y/N) "
-                [ $quiet -eq 0 ] && read -rsn1 continue
-                log
+            logn "Specified version matches $version"
+        fi
 
-                [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
-            fi
+        if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
+            logn " but it seems it's already installed"
+        fi
+        if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
+            logn ", continue? (y/N) "
+            [ $quiet -eq 0 ] && read -rsn1 continue
+            log
+
+            [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
+        else
+            log
         fi
 
         [ ! -d "$workdir" ] && {
