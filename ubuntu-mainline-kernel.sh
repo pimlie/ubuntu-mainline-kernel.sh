@@ -274,6 +274,14 @@ containsElement () {
   return 1
 }
 
+filterArray () {
+	local filter=$1
+	shift
+	local -a all=( "$@" )
+	local -a filtered=($(printf '%s\n' "${all[@]}" | grep "v${filter#v}"))
+	echo "${filtered[@]}"
+}
+
 download () {
     host=$1
     uri=$2
@@ -581,14 +589,23 @@ Optional:
                 version="v"${action_data[0]#v}
             fi
 
+	    if [ -z  "$version" ]; then
+		FILTERED_VERSIONS=($(filterArray  "v${action_data[0]#v}" "${REMOTE_VERSIONS[@]}"))
+		version="${FILTERED_VERSIONS[-1]}"
+	    fi
+
             [[ -z "$version" ]] && {
                 err "Version '${action_data[0]}' not found"
                 exit 2
             }
             shift
 
-            if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
-                logn "It seems version $version is already installed, continue? (y/N) "
+            if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ]; then
+		if  containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
+	                logn "It seems version $version is already installed, continue? (y/N) "
+		else
+			logn "Installing version $version, continue? (y/N) "
+		fi
                 [ $quiet -eq 0 ] && read -rsn1 continue
                 log
 
