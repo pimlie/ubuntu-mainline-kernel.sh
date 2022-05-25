@@ -37,7 +37,9 @@ Arguments:
   -c               Check if a newer kernel version is available
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
-                   omitted the latest available version will be installed
+                   omitted the latest available version will be installed. Supports
+                   version filtering. E.g. -i v.5.17 will install the latest v5.17.x
+                   kernel. 
   -l [SEARCH]      List locally installedkernel versions. If an argument to this
                    option is supplied it will search for that
   -r [SEARCH]      List available kernel versions. If an argument to this option
