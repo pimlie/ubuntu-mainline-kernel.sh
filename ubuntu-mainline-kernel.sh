@@ -591,6 +591,10 @@ Optional:
 
 	    if [ -z  "$version" ]; then
 		FILTERED_VERSIONS=($(filterArray  "v${action_data[0]#v}" "${REMOTE_VERSIONS[@]}"))
+		if [ ${#FILTERED_VERSIONS[@]} -eq 0 ]; then
+			err "No versions found matching filter: v${action_data[0]#v}"
+			exit 3
+		fi
 		version="${FILTERED_VERSIONS[-1]}"
 	    fi
 
