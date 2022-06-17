@@ -17,7 +17,7 @@ Install
 apt install wget
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
 chmod +x ubuntu-mainline-kernel.sh
-sudo mv ubuntu-mainline-kernel.sh /usr/local/bin/
+sudo install ubuntu-mainline-kernel.sh /usr/local/bin/
 ```
 
 If you want to automatically check for a new kernel version when you login:
