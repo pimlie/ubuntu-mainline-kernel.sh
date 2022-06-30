@@ -145,6 +145,7 @@ while (( "$#" )); do
         -c|--check)
             single_action
             run_action="check"
+            argarg_required=1
             ;;
         -l|--local-list)
             single_action
@@ -272,6 +273,14 @@ containsElement () {
   local e
   for e in "${@:2}"; do [[ "$e" == "$1" ]] || [[ "$e" =~ $1- ]] && return 0; done
   return 1
+}
+
+filterArray () {
+	local filter=$1
+	shift
+	local -a all=( "$@" )
+	local -a filtered=($(printf '%s\n' "${all[@]}" | grep "v${filter#v}"))
+	echo "${filtered[@]}"
 }
 
 download () {
@@ -407,7 +416,7 @@ load_remote_versions () {
                 [[ $use_rc -eq 0 ]] && continue
                 line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
             fi
-            [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
+            [[ -n "$2" ]] && [[ ! "$line" =~ "$2" ]] && continue
             REMOTE_VERSIONS+=("$line")
         done < <(parse_remote_versions | sort -V)
         unset IFS
@@ -441,7 +450,7 @@ case $run_action in
 Download & install the latest kernel available from $ppa_host$ppa_uri
 
 Arguments:
-  -c               Check if a newer kernel version is available
+  -c [VERSION]     Check if a newer kernel version is available. Optional VERSION filter 
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
@@ -474,9 +483,17 @@ Optional:
     check)
         check_environment
 
-        logn "Finding latest version available on $ppa_host"
-        latest_version=$(latest_remote_version)
-        log ": $latest_version"
+	if [ -z "${action_data[0]}" ]; then
+	        logn "Finding latest version available on $ppa_host"
+        	latest_version=$(latest_remote_version)
+        	log ": $latest_version"
+	else
+		version_filter="v"${action_data[0]#v}
+		logn "Finding latest version matching '${version_filter}' available on $ppa_host"
+                latest_version=$(latest_remote_version "${version_filter}")
+                log ": $latest_version"
+
+	fi
 
         logn "Finding latest installed version"
         installed_version=$(latest_local_version)
@@ -581,14 +598,27 @@ Optional:
                 version="v"${action_data[0]#v}
             fi
 
+	    if [ -z  "$version" ]; then
+		FILTERED_VERSIONS=($(filterArray  "v${action_data[0]#v}" "${REMOTE_VERSIONS[@]}"))
+		if [ ${#FILTERED_VERSIONS[@]} -eq 0 ]; then
+			err "No versions found matching filter: v${action_data[0]#v}"
+			exit 3
+		fi
+		version="${FILTERED_VERSIONS[-1]}"
+	    fi
+
             [[ -z "$version" ]] && {
                 err "Version '${action_data[0]}' not found"
                 exit 2
             }
             shift
 
-            if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
-                logn "It seems version $version is already installed, continue? (y/N) "
+            if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ]; then
+		if  containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
+	                logn "It seems version $version is already installed, continue? (y/N) "
+		else
+			logn "Installing version $version, continue? (y/N) "
+		fi
                 [ $quiet -eq 0 ] && read -rsn1 continue
                 log
 
