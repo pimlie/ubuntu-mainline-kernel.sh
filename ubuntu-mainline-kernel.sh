@@ -450,7 +450,7 @@ case $run_action in
 Download & install the latest kernel available from $ppa_host$ppa_uri
 
 Arguments:
-  -c               Check if a newer kernel version is available
+  -c [VERSION]     Check if a newer kernel version is available. Optional VERSION filter 
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
