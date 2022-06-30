@@ -145,6 +145,7 @@ while (( "$#" )); do
         -c|--check)
             single_action
             run_action="check"
+            argarg_required=1
             ;;
         -l|--local-list)
             single_action
@@ -415,7 +416,7 @@ load_remote_versions () {
                 [[ $use_rc -eq 0 ]] && continue
                 line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
             fi
-            [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
+            [[ -n "$2" ]] && [[ ! "$line" =~ "$2" ]] && continue
             REMOTE_VERSIONS+=("$line")
         done < <(parse_remote_versions | sort -V)
         unset IFS
@@ -482,9 +483,17 @@ Optional:
     check)
         check_environment
 
-        logn "Finding latest version available on $ppa_host"
-        latest_version=$(latest_remote_version)
-        log ": $latest_version"
+	if [ -z "${action_data[0]}" ]; then
+	        logn "Finding latest version available on $ppa_host"
+        	latest_version=$(latest_remote_version)
+        	log ": $latest_version"
+	else
+		version_filter="v"${action_data[0]#v}
+		logn "Finding latest version matching '${version_filter}' available on $ppa_host"
+                latest_version=$(latest_remote_version "${version_filter}")
+                log ": $latest_version"
+
+	fi
 
         logn "Finding latest installed version"
         installed_version=$(latest_local_version)
