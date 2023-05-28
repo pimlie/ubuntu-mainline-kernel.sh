@@ -1,6 +1,6 @@
 # ubuntu-mainline-kernel.sh
 
-Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kernels from the [Ubuntu Kernel PPA](http://kernel.ubuntu.com/~kernel-ppa/mainline/).
+Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kernels from the [Ubuntu Kernel PPA](https://kernel.ubuntu.com/~kernel-ppa/mainline/).
 
 ## Warnings
 
@@ -64,6 +64,8 @@ Optional:
   --rc                 Also include release candidates
   --yes                Assume yes on all questions (use with caution!)
 ```
+
+> :information_source: Since ~v5.18 Ubuntu does not publish low-latency mainline kernels anymore, see this [AskUbuntu](https://askubuntu.com/questions/1397410/where-are-latest-mainline-low-latency-kernel-packages) for more info
 
 ## Elevated privileges
 
