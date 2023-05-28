@@ -1,18 +1,16 @@
-ubuntu-mainline-kernel.sh
-=================
+# ubuntu-mainline-kernel.sh
 
 Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kernels from the [Ubuntu Kernel PPA](http://kernel.ubuntu.com/~kernel-ppa/mainline/).
 
-Warnings
------------------
+## Warnings
+
 :warning: Use this script at your own risk. Be aware that the kernels installed by this script are [unsupported](https://wiki.ubuntu.com/Kernel/MainlineBuilds#Support_.28BEWARE:_there_is_none.29)
 
 :unlock: Do not use this script if you don't have to or don't know what you are doing. You won't be [covered](https://github.com/pimlie/ubuntu-mainline-kernel.sh/issues/32) by any security guarantees. The intended purpose by Ubuntu for the mainline ppa kernels is for debugging issues.
 
 :information_source: We strongly advise to keep the default Ubuntu kernel installed as there is no safeguard that at least one kernel is installed on your system.
 
-Install
-----------------
+## Install
 ```
 apt install wget
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
@@ -26,8 +24,14 @@ wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/U
 mv UbuntuMainlineKernel.desktop ~/.config/autostart/
 ```
 
-Usage
------------------
+## SecureBoot
+
+> :warning: There is no support for creating and enrolling your own MOK. If you don't know how to do that then you could use the `mok-setup.sh` script from [berglh/ubuntu-sb-kernel-signing](https://github.com/berglh/ubuntu-sb-kernel-signing) to help you get started (at your own risk)
+
+The script supports self signing the mainline kernels. Edit the script and set `sign_kernel=1` and
+update the paths to your MOK key & certificate. (The default paths are the ones as created by the `mok-setup.sh` script from [berglh/ubuntu-sb-kernel-signing](https://github.com/berglh/ubuntu-sb-kernel-signing))
+
+## Usage
 ```
 Usage: ubuntu-mainline-kernel.sh -c|-l|-r|-u
 
@@ -61,16 +65,14 @@ Optional:
   --yes                Assume yes on all questions (use with caution!)
 ```
 
-Elevated privileges
--------------------
+## Elevated privileges
 
 This script needs elevated privileges when installing or uninstalling kernels.
 
 Either run this script with sudo or configure the path to sudo within the script to sudo automatically
 
 
-Example output
--------------------
+## Example output
 
 Install latest version:
 ```
@@ -105,21 +107,18 @@ Are you really sure? (y/N)
 Kernel v4.8.6 successfully purged
 ```
 
-Dependencies
-----------------
+## Dependencies
+
 * bash
 * gnucoreutils
 * dpkg
 * wget (since 2018-12-14 as kernel ppa is now https only)
 
-Optional dependencies
-----------------
+## Optional dependencies
+
 * libnotify-bin (to show notify bubble when new version is found)
 * bsdmainutils (format output of -l, -r with column)
 * gpg (to check the signature of the checksum file)
 * sha1sum/sha256sum (to check the .deb checksums)
+* sbsigntool (to sign kernel images for SecureBoot)
 * sudo
-
-TODO
------------------
-- [ ] Support daily kernel builds (on hold until there is significant demand for this, PRs are also welcome)

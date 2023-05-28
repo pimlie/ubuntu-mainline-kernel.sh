@@ -7,6 +7,11 @@ ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
 ppa_key="17C622B0"
 
+# Machine-Owner-Key for Secure Boot
+sign_kernel=0
+mokKey="/var/lib/shim-signed/mok/MOK-Kernel.priv"
+mokCert="/var/lib/shim-signed/mok/MOK-Kernel.pem"
+
 # If quiet=1 then no log messages are printed (except errors)
 quiet=0
 
@@ -40,7 +45,7 @@ wget=$(command -v wget)
 cleanup_files=1
 
 # (internal) If do_install=0 downloaded deb files will not be installed
-do_install=1
+do_install=0
 
 # (internal) If use_lowlatency=1 then the lowlatency kernel will be installed
 use_lowlatency=0
@@ -612,6 +617,11 @@ Optional:
             warn "Disable signature check, gpg not available"
         }
 
+        [[ $sign_kernel -eq 1 && (! -s "$mokKey" || ! -s "$mokCert") ]] && {
+            err "Could not find machine owner key"
+            exit 1
+        }
+
         IFS=$'\n'
 
         ppa_uri=$ppa_index${version%\.0}"/"
@@ -749,6 +759,32 @@ Optional:
             fi
         else
             log "deb files have been saved to $workdir"
+        fi
+
+        if [ $sign_kernel -eq 1 ]; then
+            kernelImg=""
+            for deb in "${debs[@]}"; do
+                # match deb file that starts with linux-image-
+                if [[ "$deb" == "linux-image-"* ]]; then
+                    imagePkgName="${deb/_*}"
+
+                    # The image deb normally only adds one file (the kernal image) to
+                    #  the /boot folder, find it so we can sign it
+                    kernelImg="$(grep /boot/ <<< "$(dpkg -L "$imagePkgName")")"
+                fi
+            done
+
+            if [ -n "$kernelImg" ] && [ -x "$(command -v sbsign)" ]; then
+                if $sudo sbverify --cert "$mokCert" "$kernelImg" >/dev/null; then
+                    echo "Kernel image $kernelImg is already signed by the provided MOK"
+                elif $sudo sbverify --list "$kernelImg" | grep -v "No signature table present"; then
+                    echo "Kernel image $kernelImg is already signed by another MOK"
+                else
+                    echo -n "Signing kernel image"
+                    $sudo sbsign --key "$mokKey" --cert "$mokCert" --output "$kernelImg" "$kernelImg"
+                    echo ""
+                fi
+            fi
         fi
 
         if [ $cleanup_files -eq 1 ]; then
