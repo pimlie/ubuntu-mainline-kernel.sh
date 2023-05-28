@@ -405,23 +405,30 @@ load_remote_versions () {
           [ -z "$1" ] && log
         fi
 
-        IFS=$'\n'
-        while read -r line; do
-            # reinstate original rc suffix join character
-            if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
-                [[ $use_rc -eq 0 ]] && continue
-                line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
-            fi
-            [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
-            REMOTE_VERSIONS+=("$line")
-        done < <(parse_remote_versions | sort -V)
-        unset IFS
+        if [ -n "$remote_html_cache" ]; then
+            IFS=$'\n'
+            while read -r line; do
+                # reinstate original rc suffix join character
+                if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
+                    [[ $use_rc -eq 0 ]] && continue
+                    line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+                fi
+                [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
+                REMOTE_VERSIONS+=("$line")
+            done < <(parse_remote_versions | sort -V)
+            unset IFS
+        fi
     fi
 }
 
 latest_remote_version () {
     load_remote_versions 1 "$1"
-    echo "${REMOTE_VERSIONS[${#REMOTE_VERSIONS[@]}-1]}"
+
+    if [ ${#REMOTE_VERSIONS[@]} -gt 0 ]; then
+        echo "${REMOTE_VERSIONS[${#REMOTE_VERSIONS[@]}-1]}"
+    else
+        echo ""
+    fi
 }
 
 check_environment () {
@@ -482,6 +489,11 @@ Optional:
         logn "Finding latest version available on $ppa_host"
         latest_version=$(latest_remote_version)
         log ": $latest_version"
+
+        if [ -z "$latest_version" ]; then
+            err "Could not find latest version"
+            exit 1
+        fi
 
         logn "Finding latest installed version"
         installed_version=$(latest_local_version)
@@ -562,6 +574,11 @@ Optional:
             logn "Finding latest version available on $ppa_host"
             version=$(latest_remote_version)
             log
+
+            if [ -z "$version" ]; then
+                err "Could not find latest version"
+                exit 1
+            fi
 
             if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
                 logn "Latest version is $version but seems its already installed"
