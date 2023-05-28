@@ -12,6 +12,8 @@ sign_kernel=0
 mokKey="/var/lib/shim-signed/mok/MOK-Kernel.priv"
 mokCert="/var/lib/shim-signed/mok/MOK-Kernel.pem"
 
+self_update_url="https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh"
+
 # If quiet=1 then no log messages are printed (except errors)
 quiet=0
 
@@ -241,6 +243,9 @@ while (( "$#" )); do
             debug_target="/dev/stderr"
             quiet=0
             ;;
+        --update)
+            run_action="update"
+            ;;
         -h|--help)
             run_action="help"
             ;;
@@ -463,6 +468,7 @@ Arguments:
                    is supplied it will search for that
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
+  --update         Update this script by redownloading it from github
   -h               Show this message
 
 Optional:
@@ -482,7 +488,21 @@ Optional:
 "
         exit 2
         ;;
+    update)
+        check_environment
 
+        self="$(readlink -f "$0")"
+        $wget -q -O "$self.tmp" "$self_update_url"
+
+        if [ ! -s "$self.tmp" ]; then
+            rm "$self.tmp"
+            err "Update failed, downloaded file is empty"
+            exit 1
+        else
+            mv "$self.tmp" "$self"
+            echo "Script updated"
+        fi
+        ;;
     check)
         check_environment
 

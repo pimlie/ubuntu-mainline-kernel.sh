@@ -48,6 +48,7 @@ Arguments:
                    is supplied it will search for that
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
+  --update         Update this script by redownloading it from github
   -h               Show this message
 
 Optional:
