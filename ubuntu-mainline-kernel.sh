@@ -832,7 +832,17 @@ Optional:
             read -rn1 index
             echo ""
 
+            if ! [[ $index == +([0-9]) ]]; then
+                echo "No number entered, exiting"
+                exit 0
+            fi
+
             uninstall_version=${LOCAL_VERSIONS[$index]}
+
+            if [ -z "$uninstall_version" ]; then
+                echo "Version not found"
+                exit 0
+            fi
         elif containsElement "v${action_data[0]#v}" "${LOCAL_VERSIONS[@]}"; then
             uninstall_version="v"${action_data[0]#v}
         else
