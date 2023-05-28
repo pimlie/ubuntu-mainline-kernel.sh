@@ -45,7 +45,7 @@ wget=$(command -v wget)
 cleanup_files=1
 
 # (internal) If do_install=0 downloaded deb files will not be installed
-do_install=0
+do_install=1
 
 # (internal) If use_lowlatency=1 then the lowlatency kernel will be installed
 use_lowlatency=0
