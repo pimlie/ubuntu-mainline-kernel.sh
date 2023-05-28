@@ -731,8 +731,8 @@ Optional:
                     log "ok"
                 else
                     logn "failed"
-                    warn "Unable to check signature"
-                    check_signature=0
+                    err "Unable to import ppa key"
+                    exit 1
                 fi
             fi
 

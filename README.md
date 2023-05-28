@@ -124,3 +124,6 @@ Kernel v4.8.6 successfully purged
 * sha1sum/sha256sum (to check the .deb checksums)
 * sbsigntool (to sign kernel images for SecureBoot)
 * sudo
+
+## Known issues (with workarounds)
+- GPG is unable to import the key behind a proxy: #74
