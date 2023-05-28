@@ -611,7 +611,7 @@ Optional:
 
         cd "$workdir" || exit 1
 
-        [ $check_signature -eq 1 ] && [ -z "$(command -v gpg)" ] && {
+        [ $check_signature -eq 1 ] && [ ! -x "$(command -v gpg)" ] && {
             check_signature=0
 
             warn "Disable signature check, gpg not available"
