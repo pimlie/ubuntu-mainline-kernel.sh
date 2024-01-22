@@ -39,6 +39,7 @@ Download & install the latest kernel available from kernel.ubuntu.com
 
 Arguments:
   -c               Check if a newer kernel version is available
+  -b [VERSION]     Build kernel VERSION locally and then install it (requires git & docker)
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
@@ -74,6 +75,23 @@ This script needs elevated privileges when installing or uninstalling kernels.
 
 Either run this script with sudo or configure the path to sudo within the script to sudo automatically
 
+## Building kernels locally *(EXPERIMENTAL)*
+
+> :warning: YMMV, this is experimental support. Don't build kernel's if you don't know what you are doing
+
+> :warning: If the build fails, please debug yourself and create a PR with fixes if needed. Also if you don't know how to debug the build failure, then you probably shouldn't be building your own kernels!
+
+> :information_schema: There are no plans to add full fledged support for building kernels. This functionality might stay experimental for a long time
+
+The mainline kernel ppa only supports the latest Ubuntu release. But newer Ubuntu releases could use newer library versions then the current LTS releases (f.e. both libssl or glibc version issues have existed in the past). Which means that you won't be able to (fully) install the newer kernel anymore.
+
+When that happens you could try to build your own kernel releases by using the `--build VERSION` argument (f.e. `-b 6.7.0`).
+
+Kernel building support is provided by [TuxInvader/focal-mainline-builder](https://github.com/TuxInvader/focal-mainline-builder) so requires:
+
+- git & docker
+- quite a bit of free disk space (~3GB to checkout the kernel source, maybe ~10GB or more during build)
+- can take quite a while depending on how fast your computer is
 
 ## Example output
 
