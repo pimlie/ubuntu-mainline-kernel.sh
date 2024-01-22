@@ -8,7 +8,7 @@ ppa_index="/~kernel-ppa/mainline/"
 ppa_key="17C622B0"
 
 # Machine-Owner-Key for Secure Boot
-sign_kernel=1
+sign_kernel=0
 mokKey="/var/lib/shim-signed/mok/MOK-Kernel.priv"
 mokCert="/var/lib/shim-signed/mok/MOK-Kernel.pem"
 
