@@ -81,7 +81,7 @@ Either run this script with sudo or configure the path to sudo within the script
 
 > :warning: If the build fails, please debug yourself and create a PR with fixes if needed. Also if you don't know how to debug the build failure, then you probably shouldn't be building your own kernels!
 
-> :information_schema: There are no plans to add full fledged support for building kernels. This functionality might stay experimental for a long time
+> :information_source: There are no plans to add full fledged support for building kernels. This functionality might stay experimental for a long time
 
 The mainline kernel ppa only supports the latest Ubuntu release. But newer Ubuntu releases could use newer library versions then the current LTS releases (f.e. both libssl or glibc version issues have existed in the past). Which means that you won't be able to (fully) install the newer kernel anymore.
 

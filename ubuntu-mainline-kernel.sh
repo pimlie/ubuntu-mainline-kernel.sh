@@ -742,7 +742,7 @@ Optional:
 
             # If version ends on .0 then build or own builder container using tuxinvader's as base
             # to fix the branch name checkout cause the branch name is v6.7 and not v6.7.0
-            if [[ $version =~ ".0" ]]; then
+            if [[ $version =~ \.0 ]]; then
                 imageName="mainline-builder"
                 # Build docker image if not yet exists
                 if [ -z "$(docker images -q mainline-builder)" ]; then
@@ -764,6 +764,7 @@ EOF
             series="$(lsb_release -cs)"
             # check for upstream releases for distros like Linux Mint
             if [ -f /etc/upstream-release/lsb-release ]; then
+                # shellcheck disable=SC1091
                 series="$(source /etc/upstream-release/lsb-release && echo "$DISTRIB_CODENAME")"
             fi
 
