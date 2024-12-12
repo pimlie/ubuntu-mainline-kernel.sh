@@ -7,6 +7,13 @@ ppa_host="kernel.ubuntu.com"
 ppa_index="/~kernel-ppa/mainline/"
 ppa_key="17C622B0"
 
+# Machine-Owner-Key for Secure Boot
+sign_kernel=0
+mokKey="/var/lib/shim-signed/mok/MOK-Kernel.priv"
+mokCert="/var/lib/shim-signed/mok/MOK-Kernel.pem"
+
+self_update_url="https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh"
+
 # If quiet=1 then no log messages are printed (except errors)
 quiet=0
 
@@ -29,6 +36,15 @@ sudo=""
 
 # Path to wget command
 wget=$(command -v wget)
+
+# Path where git kernel source is checked out when building the kernel
+build_src_path="/usr/local/src/mainline-kernel/"
+
+# Path where git kernel source is checked out when building the kernel
+build_deb_path="/opt/mainline-kernel/"
+
+# Which packages to install after build (comma separated, only used when building the kernel locally)
+build_pkgs="linux-headers,linux-image-unsigned,linux-modules"
 
 #####
 ## Below are internal variables of which most can be toggled by command options
@@ -146,6 +162,11 @@ while (( "$#" )); do
             single_action
             run_action="check"
             ;;
+        -b|--build)
+            single_action
+            run_action="build"
+            argarg_required=1
+            ;;
         -l|--local-list)
             single_action
             run_action="local-list"
@@ -236,6 +257,9 @@ while (( "$#" )); do
             debug_target="/dev/stderr"
             quiet=0
             ;;
+        --update)
+            run_action="update"
+            ;;
         -h|--help)
             run_action="help"
             ;;
@@ -272,6 +296,22 @@ containsElement () {
   local e
   for e in "${@:2}"; do [[ "$e" == "$1" ]] || [[ "$e" =~ $1- ]] && return 0; done
   return 1
+}
+
+monitor_background_command () {
+    local pid=$1
+
+    printf ' '
+    while :; do for c in / - \\ \|; do
+        if ps -p "$pid" >/dev/null; then
+            printf '\b%s' "$c"
+            sleep 1
+        else
+            break 2
+        fi
+    done; done
+
+    printf '\b '
 }
 
 download () {
@@ -400,29 +440,103 @@ load_remote_versions () {
           [ -z "$1" ] && log
         fi
 
-        IFS=$'\n'
-        while read -r line; do
-            # reinstate original rc suffix join character
-            if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
-                [[ $use_rc -eq 0 ]] && continue
-                line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
-            fi
-            [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
-            REMOTE_VERSIONS+=("$line")
-        done < <(parse_remote_versions | sort -V)
-        unset IFS
+        if [ -n "$remote_html_cache" ]; then
+            IFS=$'\n'
+            while read -r line; do
+                # reinstate original rc suffix join character
+                if [[ $line =~ ^([^~]+)~([^~]+)$ ]]; then
+                    [[ $use_rc -eq 0 ]] && continue
+                    line="${BASH_REMATCH[1]}-${BASH_REMATCH[2]}"
+                fi
+                [[ -n "$2" ]] && [[ ! "$line" =~ $2 ]] && continue
+                REMOTE_VERSIONS+=("$line")
+            done < <(parse_remote_versions | sort -V)
+            unset IFS
+        fi
     fi
 }
 
 latest_remote_version () {
     load_remote_versions 1 "$1"
-    echo "${REMOTE_VERSIONS[${#REMOTE_VERSIONS[@]}-1]}"
+
+    if [ ${#REMOTE_VERSIONS[@]} -gt 0 ]; then
+        echo "${REMOTE_VERSIONS[${#REMOTE_VERSIONS[@]}-1]}"
+    else
+        echo ""
+    fi
+}
+
+check_requested_version () {
+    local requested_version="$1"
+
+    if [ -z "${requested_version}" ]; then
+        logn "Finding latest version available on $ppa_host"
+        version=$(latest_remote_version)
+        log
+
+        if [ -z "$version" ]; then
+            err "Could not find latest version"
+            exit 1
+        fi
+
+        if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
+            logn "Latest version is $version but seems its already installed"
+        else
+            logn "Latest version is: $version"
+        fi
+
+        if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
+            logn ", continue? (y/N) "
+            [ $quiet -eq 0 ] && read -rsn1 continue
+            log
+
+            [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
+        else
+            log
+        fi
+    else
+        load_remote_versions
+
+        version=""
+        if containsElement "v${requested_version#v}" "${REMOTE_VERSIONS[@]}"; then
+            version="v"${requested_version#v}
+        fi
+
+        [[ -z "$version" ]] && {
+            err "Version '${requested_version}' not found"
+            exit 2
+        }
+        shift
+
+        if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
+            logn "It seems version $version is already installed, continue? (y/N) "
+            [ $quiet -eq 0 ] && read -rsn1 continue
+            log
+
+            [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
+        fi
+    fi
 }
 
 check_environment () {
     if [ $use_https -eq 1 ] && [ -z "$wget" ]; then
         err "Abort, wget not found. Please apt install wget"
         exit 3
+    fi
+
+    local required_commands=("$@")
+    if [ ${#required_commands[@]} -gt 0 ]; then
+        local missing_commands=()
+        for cmd in "${required_commands[@]}"; do
+            if ! command -v "$cmd" >/dev/null; then
+                missing_commands+=("$cmd")
+            fi
+        done
+
+        if [ ${#missing_commands[@]} -gt 0 ]; then
+            err "Abort, some required commands are missing. Please install: ${missing_commands[*]}"
+            exit 3
+        fi
     fi
 }
 
@@ -442,6 +556,7 @@ Download & install the latest kernel available from $ppa_host$ppa_uri
 
 Arguments:
   -c               Check if a newer kernel version is available
+  -b [VERSION]     Build kernel VERSION locally and then install it (requires git & docker)
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
@@ -451,6 +566,7 @@ Arguments:
                    is supplied it will search for that
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
+  --update         Update this script by redownloading it from github
   -h               Show this message
 
 Optional:
@@ -470,13 +586,32 @@ Optional:
 "
         exit 2
         ;;
+    update)
+        check_environment
 
+        self="$(readlink -f "$0")"
+        $wget -q -O "$self.tmp" "$self_update_url"
+
+        if [ ! -s "$self.tmp" ]; then
+            rm "$self.tmp"
+            err "Update failed, downloaded file is empty"
+            exit 1
+        else
+            mv "$self.tmp" "$self"
+            echo "Script updated"
+        fi
+        ;;
     check)
         check_environment
 
         logn "Finding latest version available on $ppa_host"
         latest_version=$(latest_remote_version)
         log ": $latest_version"
+
+        if [ -z "$latest_version" ]; then
+            err "Could not find latest version"
+            exit 1
+        fi
 
         logn "Finding latest installed version"
         installed_version=$(latest_local_version)
@@ -527,9 +662,9 @@ Optional:
         # shellcheck disable=SC2015
         [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
 
-        (for version in "${LOCAL_VERSIONS[@]}"; do
-            if [ -z "${action_data[0]}" ] || [[ "$version" =~ ${action_data[0]} ]]; then
-                echo "$version"
+        (for local_version in "${LOCAL_VERSIONS[@]}"; do
+            if [ -z "${action_data[0]}" ] || [[ "$local_version" =~ ${action_data[0]} ]]; then
+                echo "$local_version"
             fi
         done) | $column
         ;;
@@ -540,11 +675,179 @@ Optional:
         # shellcheck disable=SC2015
         [[ -n "$(command -v column)" ]] && { column="column -x"; } || { column="cat"; }
 
-        (for version in "${REMOTE_VERSIONS[@]}"; do
-            if [ -z "${action_data[0]}" ] || [[ "$version" =~ ${action_data[0]} ]]; then
-                echo "$version"
+        (for remote_version in "${REMOTE_VERSIONS[@]}"; do
+            if [ -z "${action_data[0]}" ] || [[ "$remote_version" =~ ${action_data[0]} ]]; then
+                echo "$remote_version"
             fi
         done) | $column
+        ;;
+    build)
+        # only ensure running if the kernel files should be installed
+        guard_run_as_root
+
+        check_environment git docker
+        load_local_versions
+        check_requested_version "${action_data[0]}"
+
+        [ ! -d "$build_src_path" ] && {
+            mkdir -p "$build_src_path" 2>/dev/null
+        }
+        [ ! -x "$build_src_path" ] && {
+            err "$build_src_path is not writable"
+            exit 1
+        }
+
+        expected_debs_count=$(echo "$build_pkgs" | tr "," "\n" | wc -l)
+        if [[ $build_pkgs == *"linux-headers"* ]]; then
+            # headers come in two packages
+            ((expected_debs_count++))
+        fi
+
+        existing_debs_count=0
+        build_kernel=1
+
+        if [ -d "$build_deb_path/$version/" ]; then
+            existing_debs_count=$(eval "ls -1 $build_deb_path$version/{$build_pkgs}-${version#v}*.deb | wc -l")
+        fi
+
+        if [ "$existing_debs_count" -eq "$expected_debs_count" ]; then
+            read -rsn1 -p "Packages already exists for $version, use existing debs? (Y/n)" continue
+            log
+
+            if [ "${continue:-y}" == "y" ] || [ "$continue" == "Y" ]; then
+                build_kernel=0
+            fi
+        fi
+
+        if [ $build_kernel -eq 1 ]; then
+            if [ -d "$build_src_path" ]; then
+                read -rsn1 -p "Folder $build_src_path exists, remove it? (Y/n)" continue
+
+                if [ "${continue:-y}" == "y" ] || [ "$continue" == "Y" ]; then
+                    $sudo rm -Rf "$build_src_path"
+                    log
+                else
+                    log
+                    log "Cannot clone kernel source to $build_src_path as the folder already exists"
+                    exit 1
+                fi
+            fi
+
+            log "Checking out kernel source from git (is ~2GB, so can take a while) "
+            branch_version="${version%.0}" # remove last .0 if exists, cause branch name is v6.7 not v6.7.0
+            git clone --depth=1 -b "cod/mainline/$branch_version" git://git.launchpad.net/~ubuntu-kernel-test/ubuntu/+source/linux/+git/mainline-crack "$build_src_path" >"$debug_target" 2>&1 &
+            monitor_background_command $!
+
+            imageName="tuxinvader/jammy-mainline-builder:latest"
+
+            # If version ends on .0 then build or own builder container using tuxinvader's as base
+            # to fix the branch name checkout cause the branch name is v6.7 and not v6.7.0
+            if [[ $version =~ \.0 ]]; then
+                imageName="mainline-builder"
+                # Build docker image if not yet exists
+                if [ -z "$(docker images -q mainline-builder)" ]; then
+                    log "Building docker image"
+                    docker build -t mainline-builder -<<EOF
+FROM tuxinvader/jammy-mainline-builder:latest
+
+RUN cp /build.sh /build2.sh && \
+    sed -ri -e 's/cod\/mainline\/\\$\{kver\}/cod\/mainline\/\\$\{kver%\\.0\}/g' /build2.sh
+
+ENTRYPOINT ["/build2.sh"]
+CMD ["--update=yes", "--btype=binary"]
+EOF
+                else
+                    log "Docker image already exists"
+                fi
+            fi
+
+            series="$(lsb_release -cs)"
+            # check for upstream releases for distros like Linux Mint
+            if [ -f /etc/upstream-release/lsb-release ]; then
+                # shellcheck disable=SC1091
+                series="$(source /etc/upstream-release/lsb-release && echo "$DISTRIB_CODENAME")"
+            fi
+
+            log "Building kernel"
+            if ! docker run --rm -ti \
+                --network host \
+                -e kver="$version" \
+                -v "$build_src_path":/home/source \
+                -v "$workdir":/home/debs \
+                "$imageName" \
+                --btype=binary \
+                --flavour=generic \
+                --exclude=cloud-tools,cloud-tools-common,udebs \
+                --update=no \
+                --rename=yes \
+                --series="$series"; then
+                err "Error durring build"
+                exit 1
+            fi
+
+            if [ -d "$build_deb_path/$version" ]; then
+                logn "Removing existing kernel deb files"
+                rm -f "$build_deb_path/$version/"*.deb
+                log
+            fi
+
+            logn "Moving newly build kernel deb files"
+            mkdir -p "$build_deb_path/$version"
+            for f in $(eval "ls -1 $workdir$version/{$build_pkgs}-${version#v}*.deb"); do
+                cp -a "$f" "$build_deb_path/$version"
+            done
+            log
+        fi
+
+        readarray -t debs <<< "$(eval "ls -1 $build_deb_path$version/{$build_pkgs}-${version#v}*.deb")"
+
+        if [ $do_install -eq 1 ]; then
+            if [ ${#debs[@]} -gt 0 ]; then
+                log "Installing ${#debs[@]} packages"
+                $sudo dpkg -i "${debs[@]}" >$debug_target 2>&1
+            else
+                warn "Did not find any .deb files to install"
+            fi
+        else
+            log "deb files have been saved to $build_deb_path$version/"
+        fi
+
+        if [ $sign_kernel -eq 1 ]; then
+            kernelImg=""
+            for deb in "${debs[@]}"; do
+                deb="$(basename "$deb")"
+
+                # match deb file that starts with linux-image-
+                if [[ "$deb" == "linux-image-"* ]]; then
+                    imagePkgName="${deb/_*}"
+
+                    # The image deb normally only adds one file (the kernal image) to
+                    #  the /boot folder, find it so we can sign it
+                    kernelImg="$(grep /boot/ <<< "$(dpkg -L "$imagePkgName")")"
+                fi
+            done
+
+            if [ -n "$kernelImg" ] && [ -x "$(command -v sbsign)" ]; then
+                if $sudo sbverify --cert "$mokCert" "$kernelImg" >/dev/null; then
+                    log "Kernel image $kernelImg is already signed by the provided MOK"
+                elif $sudo sbverify --list "$kernelImg" | grep -v "No signature table present"; then
+                    log "Kernel image $kernelImg is already signed by another MOK"
+                else
+                    logn "Signing kernel image"
+                    $sudo sbsign --key "$mokKey" --cert "$mokCert" --output "$kernelImg" "$kernelImg"
+                    log
+                fi
+            fi
+        fi
+
+        if [ $cleanup_files -eq 1 ] && [ -d "$workdir$version/" ]; then
+            log "Cleaning up work folder"
+            rm -f "$workdir$version/"*.buildinfo
+            rm -f "$workdir$version/"*.changes
+            rm -f "$workdir$version/"*.deb
+            rmdir "$workdir$version/"
+            rmdir "$workdir"
+        fi
         ;;
     install)
         # only ensure running if the kernel files should be installed
@@ -552,49 +855,7 @@ Optional:
 
         check_environment
         load_local_versions
-
-        if [ -z "${action_data[0]}" ]; then
-            logn "Finding latest version available on $ppa_host"
-            version=$(latest_remote_version)
-            log
-
-            if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
-                logn "Latest version is $version but seems its already installed"
-            else
-                logn "Latest version is: $version"
-            fi
-
-            if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
-                logn ", continue? (y/N) "
-                [ $quiet -eq 0 ] && read -rsn1 continue
-                log
-
-                [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
-            else
-                log
-            fi
-        else
-            load_remote_versions
-
-            version=""
-            if containsElement "v${action_data[0]#v}" "${REMOTE_VERSIONS[@]}"; then
-                version="v"${action_data[0]#v}
-            fi
-
-            [[ -z "$version" ]] && {
-                err "Version '${action_data[0]}' not found"
-                exit 2
-            }
-            shift
-
-            if [ $do_install -gt 0 ] && containsElement "$version" "${LOCAL_VERSIONS[@]}" && [ $assume_yes -eq 0 ]; then
-                logn "It seems version $version is already installed, continue? (y/N) "
-                [ $quiet -eq 0 ] && read -rsn1 continue
-                log
-
-                [ "$continue" != "y" ] && [ "$continue" != "Y" ] && { exit 0; }
-            fi
-        fi
+        check_requested_version "${action_data[0]}"
 
         [ ! -d "$workdir" ] && {
             mkdir -p "$workdir" 2>/dev/null
@@ -606,10 +867,15 @@ Optional:
 
         cd "$workdir" || exit 1
 
-        [ $check_signature -eq 1 ] && [ -z "$(command -v gpg)" ] && {
+        [ $check_signature -eq 1 ] && [ ! -x "$(command -v gpg)" ] && {
             check_signature=0
 
             warn "Disable signature check, gpg not available"
+        }
+
+        [[ $sign_kernel -eq 1 && (! -s "$mokKey" || ! -s "$mokCert") ]] && {
+            err "Could not find machine owner key"
+            exit 1
         }
 
         IFS=$'\n'
@@ -704,8 +970,8 @@ Optional:
                     log "ok"
                 else
                     logn "failed"
-                    warn "Unable to check signature"
-                    check_signature=0
+                    err "Unable to import ppa key"
+                    exit 1
                 fi
             fi
 
@@ -751,6 +1017,32 @@ Optional:
             log "deb files have been saved to $workdir"
         fi
 
+        if [ $sign_kernel -eq 1 ]; then
+            kernelImg=""
+            for deb in "${debs[@]}"; do
+                # match deb file that starts with linux-image-
+                if [[ "$deb" == "linux-image-"* ]]; then
+                    imagePkgName="${deb/_*}"
+
+                    # The image deb normally only adds one file (the kernal image) to
+                    #  the /boot folder, find it so we can sign it
+                    kernelImg="$(grep /boot/ <<< "$(dpkg -L "$imagePkgName")")"
+                fi
+            done
+
+            if [ -n "$kernelImg" ] && [ -x "$(command -v sbsign)" ]; then
+                if $sudo sbverify --cert "$mokCert" "$kernelImg" >/dev/null; then
+                    log "Kernel image $kernelImg is already signed by the provided MOK"
+                elif $sudo sbverify --list "$kernelImg" | grep -v "No signature table present"; then
+                    log "Kernel image $kernelImg is already signed by another MOK"
+                else
+                    logn "Signing kernel image"
+                    $sudo sbsign --key "$mokKey" --cert "$mokCert" --output "$kernelImg" "$kernelImg"
+                    log
+                fi
+            fi
+        fi
+
         if [ $cleanup_files -eq 1 ]; then
             log "Cleaning up work folder"
             rm -f "$workdir"*.deb
@@ -779,7 +1071,17 @@ Optional:
             read -rn1 index
             echo ""
 
+            if ! [[ $index == +([0-9]) ]]; then
+                echo "No number entered, exiting"
+                exit 0
+            fi
+
             uninstall_version=${LOCAL_VERSIONS[$index]}
+
+            if [ -z "$uninstall_version" ]; then
+                echo "Version not found"
+                exit 0
+            fi
         elif containsElement "v${action_data[0]#v}" "${LOCAL_VERSIONS[@]}"; then
             uninstall_version="v"${action_data[0]#v}
         else

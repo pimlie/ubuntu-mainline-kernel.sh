@@ -1,18 +1,16 @@
-ubuntu-mainline-kernel.sh
-=================
+# ubuntu-mainline-kernel.sh
 
-Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kernels from the [Ubuntu Kernel PPA](http://kernel.ubuntu.com/~kernel-ppa/mainline/).
+Bash script for Ubuntu (and derivatives as LinuxMint) to easily (un)install kernels from the [Ubuntu Kernel PPA](https://kernel.ubuntu.com/~kernel-ppa/mainline/).
 
-Warnings
------------------
+## Warnings
+
 :warning: Use this script at your own risk. Be aware that the kernels installed by this script are [unsupported](https://wiki.ubuntu.com/Kernel/MainlineBuilds#Support_.28BEWARE:_there_is_none.29)
 
 :unlock: Do not use this script if you don't have to or don't know what you are doing. You won't be [covered](https://github.com/pimlie/ubuntu-mainline-kernel.sh/issues/32) by any security guarantees. The intended purpose by Ubuntu for the mainline ppa kernels is for debugging issues.
 
 :information_source: We strongly advise to keep the default Ubuntu kernel installed as there is no safeguard that at least one kernel is installed on your system.
 
-Install
-----------------
+## Install
 ```
 apt install wget
 wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/ubuntu-mainline-kernel.sh
@@ -26,8 +24,14 @@ wget https://raw.githubusercontent.com/pimlie/ubuntu-mainline-kernel.sh/master/U
 mv UbuntuMainlineKernel.desktop ~/.config/autostart/
 ```
 
-Usage
------------------
+## SecureBoot
+
+> :warning: There is no support for creating and enrolling your own MOK. If you don't know how to do that then you could use the `mok-setup.sh` script from [berglh/ubuntu-sb-kernel-signing](https://github.com/berglh/ubuntu-sb-kernel-signing) to help you get started (at your own risk)
+
+The script supports self signing the mainline kernels. Edit the script and set `sign_kernel=1` and
+update the paths to your MOK key & certificate. (The default paths are the ones as created by the `mok-setup.sh` script from [berglh/ubuntu-sb-kernel-signing](https://github.com/berglh/ubuntu-sb-kernel-signing))
+
+## Usage
 ```
 Usage: ubuntu-mainline-kernel.sh -c|-l|-r|-u
 
@@ -35,6 +39,7 @@ Download & install the latest kernel available from kernel.ubuntu.com
 
 Arguments:
   -c               Check if a newer kernel version is available
+  -b [VERSION]     Build kernel VERSION locally and then install it (requires git & docker)
   -i [VERSION]     Install kernel VERSION, see -l for list. You don't have to prefix
                    with v. E.g. -i 4.9 is the same as -i v4.9. If version is
                    omitted the latest available version will be installed
@@ -44,6 +49,7 @@ Arguments:
                    is supplied it will search for that
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
+  --update         Update this script by redownloading it from github
   -h               Show this message
 
 Optional:
@@ -61,16 +67,33 @@ Optional:
   --yes                Assume yes on all questions (use with caution!)
 ```
 
-Elevated privileges
--------------------
+> :information_source: Since ~v5.18 Ubuntu does not publish low-latency mainline kernels anymore, see this [AskUbuntu](https://askubuntu.com/questions/1397410/where-are-latest-mainline-low-latency-kernel-packages) for more info
+
+## Elevated privileges
 
 This script needs elevated privileges when installing or uninstalling kernels.
 
 Either run this script with sudo or configure the path to sudo within the script to sudo automatically
 
+## Building kernels locally *(EXPERIMENTAL)*
 
-Example output
--------------------
+> :warning: YMMV, this is experimental support. Don't build kernel's if you don't know what you are doing
+
+> :warning: If the build fails, please debug yourself and create a PR with fixes if needed. Also if you don't know how to debug the build failure, then you probably shouldn't be building your own kernels!
+
+> :information_source: There are no plans to add full fledged support for building kernels. This functionality might stay experimental for a long time
+
+The mainline kernel ppa only supports the latest Ubuntu release. But newer Ubuntu releases could use newer library versions then the current LTS releases (f.e. both libssl or glibc version issues have existed in the past). Which means that you won't be able to (fully) install the newer kernel anymore.
+
+When that happens you could try to build your own kernel releases by using the `--build VERSION` argument (f.e. `-b 6.7.0`).
+
+Kernel building support is provided by [TuxInvader/focal-mainline-builder](https://github.com/TuxInvader/focal-mainline-builder) so requires:
+
+- git & docker
+- quite a bit of free disk space (~3GB to checkout the kernel source, maybe ~10GB or more during build)
+- can take quite a while depending on how fast your computer is
+
+## Example output
 
 Install latest version:
 ```
@@ -105,21 +128,21 @@ Are you really sure? (y/N)
 Kernel v4.8.6 successfully purged
 ```
 
-Dependencies
-----------------
+## Dependencies
+
 * bash
 * gnucoreutils
 * dpkg
 * wget (since 2018-12-14 as kernel ppa is now https only)
 
-Optional dependencies
-----------------
+## Optional dependencies
+
 * libnotify-bin (to show notify bubble when new version is found)
 * bsdmainutils (format output of -l, -r with column)
 * gpg (to check the signature of the checksum file)
 * sha1sum/sha256sum (to check the .deb checksums)
+* sbsigntool (to sign kernel images for SecureBoot)
 * sudo
 
-TODO
------------------
-- [ ] Support daily kernel builds (on hold until there is significant demand for this, PRs are also welcome)
+## Known issues (with workarounds)
+- GPG is unable to import the key behind a proxy: #74
