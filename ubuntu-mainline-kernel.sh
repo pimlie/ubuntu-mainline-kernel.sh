@@ -1009,7 +1009,11 @@ EOF
         if [ $do_install -eq 1 ]; then
             if [ ${#debs[@]} -gt 0 ]; then
                 log "Installing ${#debs[@]} packages"
-                $sudo dpkg -i "${debs[@]}" >$debug_target 2>&1
+                if ! $sudo dpkg -i "${debs[@]}" >$debug_target 2>&1; then
+                    err "Installation failed."
+                    err "Uninstall this kernel and rerun with --debug to see error details."
+                    exit 4
+                fi
             else
                 warn "Did not find any .deb files to install"
             fi
