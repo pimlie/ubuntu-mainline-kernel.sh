@@ -584,7 +584,7 @@ Optional:
   --rc                 Also include release candidates
   --yes                Assume yes on all questions (use with caution!)
 "
-        exit 2
+        exit 0
         ;;
     update)
         check_environment
