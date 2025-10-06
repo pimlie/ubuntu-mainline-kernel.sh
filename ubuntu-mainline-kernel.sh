@@ -264,8 +264,9 @@ while (( "$#" )); do
             run_action="help"
             ;;
         *)
-            run_action="help"
-            err "Unknown argument $1"
+            err "Unknown argument: $1"
+            err "Try '--help' for more information."
+            exit 1
             ;;
     esac
 
