@@ -781,7 +781,7 @@ EOF
                 --update=no \
                 --rename=yes \
                 --series="$series"; then
-                err "Error durring build"
+                err "Error during build"
                 exit 1
             fi
 
