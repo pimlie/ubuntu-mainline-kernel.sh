@@ -74,8 +74,8 @@ use_rc=0
 assume_yes=0
 
 # (internal) How many files we expect to retrieve from the ppa
-# checksum, signature, header-all, header-arch, image(-unsigned), modules
-expected_files_count=6
+# header-all, header-arch, image(-unsigned), modules, checksum (optional), signature (optional)
+expected_files_count=4
 
 # (internal) Which action/command the script should run
 run_action="help"
@@ -935,12 +935,22 @@ EOF
         done
         unset IFS
 
+        if [ $check_checksum -eq 1 ] || [ $check_signature -eq 1 ]; then
+            if [ $uses_subfolders -eq 0 ]; then
+                FILES+=("CHECKSUMS")
+            else
+                FILES+=("${arch}/CHECKSUMS")
+            fi
+            ((expected_files_count++))
+        fi
+
         if [ $check_signature -eq 1 ]; then
             if [ $uses_subfolders -eq 0 ]; then
-              FILES+=("CHECKSUMS" "CHECKSUMS.gpg")
+                FILES+=("CHECKSUMS.gpg")
             else
-              FILES+=("${arch}/CHECKSUMS" "${arch}/CHECKSUMS.gpg")
+                FILES+=("${arch}/CHECKSUMS.gpg")
             fi
+            ((expected_files_count++))
         fi
 
         if [ ${#FILES[@]} -ne $expected_files_count ]; then
