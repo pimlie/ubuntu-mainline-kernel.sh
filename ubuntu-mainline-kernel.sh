@@ -966,7 +966,7 @@ EOF
         fi
 
         debs=()
-        log "Will download ${#FILES[@]} files from $ppa_host:"
+        log "Will download ${#FILES[@]} files from https://$ppa_host$ppa_uri"
         for file in "${FILES[@]}"; do
             workfile=${file##*/}
             monitor_progress "Downloading $file" "$workdir$workfile"
