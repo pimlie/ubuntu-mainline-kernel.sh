@@ -51,7 +51,7 @@ build_pkgs="linux-headers,linux-image-unsigned,linux-modules"
 ## DON'T CHANGE THESE MANUALLY
 #####
 
-# (internal) If cleanup_files=1 then before exiting all downloaded/temporaryfiles
+# (internal) If cleanup_files=1 then before exiting all downloaded/temporary files
 # are removed
 cleanup_files=1
 
@@ -264,8 +264,9 @@ while (( "$#" )); do
             run_action="help"
             ;;
         *)
-            run_action="help"
-            err "Unknown argument $1"
+            err "Unknown argument: $1"
+            err "Try '--help' for more information."
+            exit 1
             ;;
     esac
 
@@ -293,9 +294,9 @@ done
 #####
 
 containsElement () {
-  local e
-  for e in "${@:2}"; do [[ "$e" == "$1" ]] || [[ "$e" =~ $1- ]] && return 0; done
-  return 1
+    local e
+    for e in "${@:2}"; do [[ "$e" == "$1" ]] || [[ "$e" =~ $1- ]] && return 0; done
+    return 1
 }
 
 monitor_background_command () {
@@ -430,14 +431,14 @@ load_remote_versions () {
     local line
 
     [[ -n "$2" ]] && {
-      REMOTE_VERSIONS=()
+        REMOTE_VERSIONS=()
     }
 
     if [ ${#REMOTE_VERSIONS[@]} -eq 0 ]; then
         if [ -z "$remote_html_cache" ]; then
-          [ -z "$1" ] && logn "Downloading index from $ppa_host"
-          remote_html_cache=$(download $ppa_host $ppa_index)
-          [ -z "$1" ] && log
+            [ -z "$1" ] && logn "Downloading index from $ppa_host"
+            remote_html_cache=$(download $ppa_host $ppa_index)
+            [ -z "$1" ] && log
         fi
 
         if [ -n "$remote_html_cache" ]; then
@@ -480,12 +481,12 @@ check_requested_version () {
         fi
 
         if containsElement "$version" "${LOCAL_VERSIONS[@]}"; then
-            logn "Latest version is $version but seems its already installed"
+            logn "Latest version is $version but seems it's already installed"
         else
             logn "Latest version is: $version"
         fi
 
-        if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ];then
+        if [ $do_install -gt 0 ] && [ $assume_yes -eq 0 ]; then
             logn ", continue? (y/N) "
             [ $quiet -eq 0 ] && read -rsn1 continue
             log
@@ -541,16 +542,16 @@ check_environment () {
 }
 
 guard_run_as_root () {
-  if [ "$(id -u)" -ne 0 ]; then
-    echo "The '$run_action' command requires root privileges"
-    exit 2
-  fi  
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "The '$run_action' command requires root privileges"
+        exit 2
+    fi
 }
 
 # execute requested action
 case $run_action in
     help)
-        echo "Usage: $0 -c|-l|-r|-u
+        echo "Usage: $0 -c|-b|-i|-l|-r|-u
 
 Download & install the latest kernel available from $ppa_host$ppa_uri
 
@@ -567,7 +568,7 @@ Arguments:
   -u [VERSION]     Uninstall the specified kernel version. If version is omitted,
                    a list of max 10 installed kernel versions is displayed
   --update         Update this script by redownloading it from github
-  -h               Show this message
+  -h, --help       Show this message
 
 Optional:
   -s, --signed         Only install signed kernel packages (not implemented)
@@ -580,12 +581,13 @@ Optional:
   -do, --download-only Only download the deb files, do not install them
   -ns, --no-signature  Do not check the gpg signature of the checksums file
   -nc, --no-checksum   Do not check the sha checksums of the .deb files
-  -d, --debug          Show debug information, all internal command's echo their output
+  -d, --debug          Show debug information, all internal commands echo their output
   --rc                 Also include release candidates
   --yes                Assume yes on all questions (use with caution!)
 "
-        exit 2
+        exit 0
         ;;
+
     update)
         check_environment
 
@@ -602,6 +604,7 @@ Optional:
             echo "Script updated"
         fi
         ;;
+
     check)
         check_environment
 
@@ -626,7 +629,7 @@ Optional:
 
             index=$(download $ppa_host "$ppa_uri")
             if [[ ! $index =~ $build_succeeded_text ]]; then
-                 log "A newer kernel version ($latest_version) was found but the build was not successful"
+                log "A newer kernel version ($latest_version) was found but the build was not successful"
 
                 [ -n "$DISPLAY" ] && [ -x "$(command -v notify-send)" ] && notify-send --icon=info -t 12000 \
                     "Kernel $latest_version available" \
@@ -643,8 +646,8 @@ Optional:
             latest_minor_version=$(latest_remote_version "${installed_version%.*}")
 
             if [ "$installed_version" != "$latest_minor_version" ]; then
-              latest_minor_text=", latest in current branch is ${latest_minor_version}"
-              latest_minor_notify="Version ${latest_minor_version} is available in the current ${installed_version%.*} branch\n\n"
+                latest_minor_text=", latest in current branch is ${latest_minor_version}"
+                latest_minor_notify="Version ${latest_minor_version} is available in the current ${installed_version%.*} branch\n\n"
             fi
         fi
 
@@ -657,6 +660,7 @@ Optional:
             exit 1
         fi
         ;;
+
     local-list)
         load_local_versions
 
@@ -669,6 +673,7 @@ Optional:
             fi
         done) | $column
         ;;
+
     remote-list)
         check_environment
         load_remote_versions
@@ -682,6 +687,7 @@ Optional:
             fi
         done) | $column
         ;;
+
     build)
         # only ensure running if the kernel files should be installed
         guard_run_as_root
@@ -850,6 +856,7 @@ EOF
             rmdir "$workdir"
         fi
         ;;
+
     install)
         # only ensure running if the kernel files should be installed
         [ $do_install -eq 1 ] && guard_run_as_root
@@ -887,8 +894,8 @@ EOF
         index=$(download $ppa_host "$ppa_uri")
 
         if [[ ! $index =~ $build_succeeded_text ]]; then
-          err "Abort, the ${arch} build has not succeeded"
-          exit 1
+            err "Abort, the ${arch} build has not succeeded"
+            exit 1
         fi
 
         index=${index%%*<table}
@@ -900,12 +907,12 @@ EOF
         section_end="^[[:space:]]*<br>[[:space:]]*$"
         for line in $index; do
             if [[ $line =~ $build_succeeded_text ]]; then
-              found_arch=1
-              continue
+                found_arch=1
+                continue
             elif [ $found_arch -eq 0 ]; then
-              continue
+                continue
             elif [[ $line =~ $section_end ]]; then
-              break
+                break
             fi
 
             [[ "$line" =~ linux-(image(-(un)?signed)?|headers|modules)-[0-9]+\.[0-9]+\.[0-9]+-[0-9]{6}.*?_(${arch}|all).deb ]] || continue
@@ -921,7 +928,7 @@ EOF
             line=${line%%\">*}
 
             if [ $uses_subfolders -eq 0 ] && [[ $line =~ ${arch}/linux ]]; then
-              uses_subfolders=1
+                uses_subfolders=1
             fi
 
             FILES+=("$line")
@@ -1025,12 +1032,12 @@ EOF
         if [ $sign_kernel -eq 1 ]; then
             kernelImg=""
             for deb in "${debs[@]}"; do
-                # match deb file that starts with linux-image-
+                # Match deb file that starts with linux-image-
                 if [[ "$deb" == "linux-image-"* ]]; then
                     imagePkgName="${deb/_*}"
 
                     # The image deb normally only adds one file (the kernal image) to
-                    #  the /boot folder, find it so we can sign it
+                    # the /boot folder, find it so we can sign it
                     kernelImg="$(grep /boot/ <<< "$(dpkg -L "$imagePkgName")")"
                 fi
             done
@@ -1055,6 +1062,7 @@ EOF
             rmdir "$workdir"
         fi
         ;;
+
     uninstall)
         guard_run_as_root
         load_local_versions
