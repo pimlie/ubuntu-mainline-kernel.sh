@@ -597,6 +597,7 @@ Optional:
             err "Update failed, downloaded file is empty"
             exit 1
         else
+            chmod --reference="$self" "$self.tmp"
             mv "$self.tmp" "$self"
             echo "Script updated"
         fi
