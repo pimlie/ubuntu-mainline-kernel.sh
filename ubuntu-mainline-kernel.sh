@@ -1004,15 +1004,15 @@ EOF
         fi
 
         if [ $check_checksum -eq 1 ]; then
-            shasums=( "sha256sum" "sha1sum" )
+            shasums=( "shasum" "sha256sum" "sha1sum" )
 
             for shasum in "${shasums[@]}"; do
                 xshasum=$(command -v "$shasum")
                 if [ -n "$xshasum" ] && [ -x "$xshasum" ]; then
-                    # shellcheck disable=SC2094
-                    shasum_result=$($xshasum --ignore-missing -c CHECKSUMS 2>>$debug_target | tee -a $debug_target | wc -l)
+                    $xshasum --ignore-missing -c CHECKSUMS >$debug_target 2>&1
+                    shasum_result=$?
 
-                    if [ "$shasum_result" -eq 0 ] || [ "$shasum_result" -ne ${#debs[@]} ]; then
+                    if [ "$shasum_result" -ne 0 ]; then
                         err "Abort, $shasum returned an error $shasum_result"
                         exit 4
                     else
